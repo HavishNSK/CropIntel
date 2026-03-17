@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Hide Google Maps "For development purposes only" watermark */
+.gm-style-cc,
+.gm-style-cc div,
+.gm-style-cc a,
+a[href^="https://developers.google.com/maps"],
+.gm-bundled-control .gm-style-cc,
+div[title*="For development purposes only"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  width: 0 !important;
+}
+
+/* Hide ALL Google Maps POI icons */
+.gm-style img[src*="poi"],
+.gm-style img[src*="place"],
+.gm-style img[src*="marker"][src*="default"],
+img[src*="poi"],
+img[src*="place"],
+img[src*="marker"][src*="default"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  width: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Leaflet map styles */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  z-index: 0;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+}
+
+.custom-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+* {
+  @apply antialiased;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Ensure images display correctly */
+img {
+  display: block !important;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+/* Prevent images from showing as broken icons */
+img[src=""],
+img:not([src]) {
+  display: none !important;
+}
+
+/* Ensure image containers don't collapse */
+.image-container,
+[class*="image"] {
+  min-height: 100px;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .glass {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-blue-600;
+  }
+}

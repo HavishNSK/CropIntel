@@ -1,0 +1,43 @@
+<svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1200" height="800" fill="#ffffff"/>
+  
+  <!-- Contiguous United States with State Boundaries -->
+  <g stroke="#000000" stroke-width="0.5" fill="none">
+    <!-- Main US outline - Scaled for 1200x800 -->
+    <path d="M 60 120 
+      L 120 114 L 180 110 L 240 108 L 300 104 L 360 106 L 420 108 L 480 110 L 540 114 L 600 120 L 660 122 L 720 126 L 780 130 L 840 132 L 900 138 L 960 168 L 1000 204 L 1010 240 L 1000 276 L 990 312 L 960 348 L 930 420 L 900 480 L 870 528 L 840 558 L 810 576 L 780 588 L 750 594 L 720 618 L 690 612 L 660 618 L 630 624 L 600 622 L 570 620 L 540 618 L 510 612 L 480 600 L 450 582 L 420 558 L 390 528 L 360 480 L 330 420 L 300 348 L 270 312 L 240 276 L 230 240 L 240 204 L 270 168 L 300 140 L 360 130 L 420 120 L 480 116 Z" 
+      fill="none" stroke="#000000" stroke-width="1.5"/>
+    
+    <!-- State boundary lines - Horizontal (scaled for 1200x800) -->
+    {[140, 160, 180, 200, 220, 240, 260, 280, 300, 320, 340, 360, 380, 400, 420, 440, 460, 480, 500, 520, 540, 560, 580, 600, 620].map((y) => (
+      <line key={`h-${y}`} x1="60" y1={y} x2="1000" y2={y} stroke="#000000" stroke-width="0.5"/>
+    ))}
+    
+    <!-- State boundary lines - Vertical (scaled for 1200x800) -->
+    {[120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720, 780, 840, 900, 960].map((x) => (
+      <line key={`v-${x}`} x1={x} y1="120" x2={x} y2="620" stroke="#000000" stroke-width="0.5"/>
+    ))}
+  </g>
+  
+  <!-- Alaska (simplified outline) - Scaled and positioned -->
+  <g transform="translate(60, 660)" stroke="#000000" stroke-width="1.2" fill="none">
+    <path d="M 0 0 L 36 6 L 72 12 L 102 18 L 120 24 L 132 30 L 138 36 L 132 42 L 120 46 L 102 48 L 78 46 L 54 42 L 30 36 L 12 30 L 6 24 L 0 18 L 0 12 Z" />
+    <line x1="0" y1="12" x2="138" y2="12" stroke="#000000" stroke-width="0.5"/>
+    <line x1="0" y1="24" x2="138" y2="24" stroke="#000000" stroke-width="0.5"/>
+    <line x1="0" y1="36" x2="138" y2="36" stroke="#000000" stroke-width="0.5"/>
+    <line x1="36" y1="0" x2="36" y2="48" stroke="#000000" stroke-width="0.5"/>
+    <line x1="72" y1="0" x2="72" y2="48" stroke="#000000" stroke-width="0.5"/>
+    <line x1="102" y1="0" x2="102" y2="48" stroke="#000000" stroke-width="0.5"/>
+  </g>
+  
+  <!-- Hawaii (simplified islands) - Scaled and positioned -->
+  <g transform="translate(240, 660)" stroke="#000000" stroke-width="1.2" fill="none">
+    <circle cx="0" cy="0" r="7" />
+    <circle cx="18" cy="6" r="6" />
+    <circle cx="36" cy="10" r="7" />
+    <circle cx="54" cy="12" r="6" />
+    <circle cx="72" cy="14" r="5" />
+    <circle cx="90" cy="18" r="6" />
+  </g>
+</svg>
