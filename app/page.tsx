@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
+import { Bell, MapPin, Sparkles, History as HistoryIcon, ArrowRight, Loader2 } from 'lucide-react'
 import ImageUpload from '@/components/ImageUpload'
 import CropSelector from '@/components/CropSelector'
 import PredictionResults from '@/components/PredictionResults'
@@ -33,6 +35,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [activeView, setActiveView] = useState<'diagnose' | 'history' | 'outbreaks'>('diagnose')
   // Initialize with a sample outbreak in Russellville, Arkansas
   const [outbreakReports, setOutbreakReports] = useState<OutbreakReport[]>([
     {
@@ -256,235 +259,194 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 py-8 px-4 relative overflow-x-hidden">
-      <div className="container mx-auto max-w-7xl relative z-0">
-        {/* Header */}
-        <header className="text-center mb-12 relative">
-          {/* Navigation Bar */}
-          <nav className="mb-8 flex justify-center items-center gap-4 flex-wrap">
-            <a
-              href="/"
-              className="px-4 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow text-slate-700 font-semibold hover:text-blue-600"
-            >
-              Home
-            </a>
-            <a
-              href="/tierlist"
-              className="px-4 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow text-slate-700 font-semibold hover:text-blue-600"
-            >
-              Tier List
-            </a>
-            <a
-              href="/outbreaks"
-              className="px-4 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow text-slate-700 font-semibold hover:text-blue-600"
-            >
-              Outbreaks
-            </a>
-          </nav>
+    <main className="min-h-screen px-4 py-6">
+      <div className="mx-auto max-w-7xl">
+        {/* Top bar */}
+        <header className="sticky top-0 z-40 -mx-4 px-4 py-3 backdrop-blur bg-white/70 border-b border-slate-200/60">
+          <div className="mx-auto max-w-7xl flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary-600 to-primary-700 text-white flex items-center justify-center shadow-sm overflow-hidden">
+                <Image
+                  src="/brand/wheat-mark-transparent.png"
+                  alt="CropIntel"
+                  width={22}
+                  height={44}
+                  className="opacity-95 object-contain drop-shadow-[0_1px_0_rgba(0,0,0,0.08)]"
+                  priority
+                />
+              </div>
+              <div className="leading-tight">
+                <div className="text-sm font-semibold text-slate-900">CropIntel</div>
+                <div className="text-xs text-slate-500">Crop health insights</div>
+              </div>
+            </div>
 
-          {/* Notification System and Registration - Top Right */}
-          <div className="absolute top-0 right-0 flex items-center gap-3 z-10">
-            <FarmerRegistration
-              onRegister={handleFarmerRegister}
-              crops={Object.keys(CROPS)}
-            />
-            <NotificationSystem
-              outbreaks={outbreakReports}
-              currentFarmerLocation={farmerLocation || undefined}
-            />
+            <nav className="hidden md:flex items-center gap-2">
+              <a
+                href="/"
+                className="px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              >
+                Diagnose
+              </a>
+              <a
+                href="/outbreaks"
+                className="px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              >
+                Outbreaks
+              </a>
+            </nav>
+
+            <div className="flex items-center gap-2">
+              <div className="hidden sm:block">
+                <FarmerRegistration onRegister={handleFarmerRegister} crops={Object.keys(CROPS)} />
+              </div>
+              <div className="relative">
+                <NotificationSystem outbreaks={outbreakReports} currentFarmerLocation={farmerLocation || undefined} />
+              </div>
+            </div>
           </div>
-          
-          <div className="inline-block p-6 bg-white rounded-2xl shadow-lg border-2 border-slate-200 mb-6">
-            <h1 className="text-5xl md:text-6xl font-extrabold bg-gradient-to-r from-primary-600 via-blue-600 to-primary-600 bg-clip-text text-transparent mb-3">
-              🌾 CropIntel
-            </h1>
-          </div>
-          <p className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
-            AI-Powered Crop Disease Classification
-          </p>
-          <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-            Detect and diagnose crop diseases with advanced machine learning technology
-          </p>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-          {/* Tips and Guidelines - Sidebar */}
-          <div className="lg:col-span-1">
-            <TipsAndGuidelines />
-          </div>
-
-          {/* Main Content */}
-          <div className="lg:col-span-2 bg-white rounded-2xl shadow-xl border-2 border-slate-200 p-8 space-y-6">
-          {/* Image Upload */}
-          <ImageUpload
-            selectedImage={selectedImage}
-            onImageSelect={handleImageSelect}
-            onClear={handleClear}
-          />
-
-          {/* Crop Selector */}
-          <CropSelector
-            crops={Object.keys(CROPS)}
-            selectedCrop={selectedCrop}
-            onCropChange={setSelectedCrop}
-          />
-
-          {/* Predict Button */}
-          <div className="flex justify-center pt-4">
-            <button
-              onClick={handlePredict}
-              disabled={!selectedImage || loading}
-              className="group relative px-12 py-4 bg-gradient-to-r from-blue-600 to-primary-600 text-white rounded-xl font-bold text-lg hover:from-blue-700 hover:to-primary-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none overflow-hidden"
-            >
-              <span className="absolute inset-0 bg-white/20 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300"></span>
-              <span className="relative flex items-center gap-3">
-                {loading ? (
-                  <>
-                    <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        fill="none"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                    Analyze Disease
-                  </>
-                )}
-              </span>
-            </button>
-          </div>
-
-          {/* Error Message */}
-          {error && (
-            <div className="bg-gradient-to-r from-red-50 to-red-100 border-2 border-red-300 text-red-900 px-6 py-4 rounded-xl shadow-lg animate-pulse">
-              <div className="flex items-center gap-3">
-                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div>
-                  <p className="font-bold">Error:</p>
-                  <p>{error}</p>
-                </div>
+        {/* Hero */}
+        <section className="mt-8 mb-6">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+            <div className="max-w-2xl">
+              <h1 className="text-3xl md:text-4xl font-semibold text-slate-900 tracking-tight">
+                Diagnose crop issues from a photo
+              </h1>
+              <p className="mt-2 text-slate-600">
+                Upload a leaf image, pick the crop, and get a ranked set of labels with confidence.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="px-3 py-2 rounded-xl border border-slate-200 bg-white/80 text-sm text-slate-700 flex items-center gap-2">
+                <Bell className="w-4 h-4 text-primary-700" />
+                Outbreak alerts
               </div>
             </div>
-          )}
-
-          {/* Prediction Results */}
-          {prediction && (
-            <>
-              <PredictionResults prediction={prediction} />
-              <Diagnosis 
-                disease={prediction.disease} 
-                crop={selectedCrop} 
-                confidence={typeof prediction.confidence === 'number' && prediction.confidence <= 1 
-                  ? prediction.confidence * 100 
-                  : prediction.confidence}
-                isHealthy={prediction.is_healthy}
-              />
-              <DiseaseInfo diseaseName={prediction.disease} crop={selectedCrop} />
-              <ExportResults prediction={prediction} crop={selectedCrop} imageUrl={imageUrl} />
-            </>
-          )}
           </div>
+        </section>
+
+        {/* Views */}
+        <div className="flex flex-wrap items-center gap-2 mb-6">
+          {(
+            [
+              { id: 'diagnose', label: 'Diagnose', icon: Sparkles },
+              { id: 'history', label: 'History', icon: HistoryIcon },
+              { id: 'outbreaks', label: 'Outbreaks', icon: MapPin },
+            ] as const
+          ).map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveView(id)}
+              className={`px-4 py-2 rounded-xl border text-sm font-semibold transition-all flex items-center gap-2 ${
+                activeView === id
+                  ? 'bg-primary-700 text-white border-primary-700'
+                  : 'bg-white/70 text-slate-700 border-slate-200 hover:bg-white hover:border-primary-300'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {label}
+            </button>
+          ))}
         </div>
 
-        {/* Prediction History */}
-        <div className="mt-8">
-          <PredictionHistory onSelectHistory={handleHistorySelect} />
-        </div>
+        {activeView === 'diagnose' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <section className="surface rounded-2xl p-6">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div>
+                    <h2 className="text-base font-semibold text-slate-900">Photo analysis</h2>
+                    <p className="text-sm text-slate-600 mt-1">Best results with a sharp, well-lit close-up.</p>
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    Step <span className="font-semibold text-slate-700">1</span> of 3
+                  </div>
+                </div>
 
-        {/* Outbreak Reporting Section */}
-        <div className="mt-8 bg-white rounded-2xl shadow-xl border-2 border-slate-200 p-8">
-          <div className="mb-6">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </div>
-              Outbreak Reporting Map
-            </h2>
-            <p className="text-gray-700 text-lg">
-              Report potential crop disease outbreaks by clicking on the map. Help track and monitor disease spread across the United States.
-            </p>
-          </div>
-          
-          <div className="bg-white rounded-xl p-6 shadow-inner border border-slate-200">
-            <USOutbreakMap reports={outbreakReports} onReportSubmit={handleOutbreakReport} />
-          </div>
-          
-          {/* Outbreak Reports List */}
-          {outbreakReports.length > 0 && (
-            <div className="mt-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-bold">
-                  {outbreakReports.length}
-                </span>
-                Reported Outbreaks
-              </h3>
-              <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
-                {outbreakReports.map((report) => (
-                  <div
-                    key={report.id}
-                    className="bg-gradient-to-r from-white to-slate-50 border-2 border-slate-200 rounded-xl p-4 hover:shadow-lg hover:border-blue-300 transition-all"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2 flex-wrap">
-                          <h4 className="text-lg font-bold text-gray-900">
-                            {report.crop} - {report.disease}
-                          </h4>
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-bold ${
-                              report.severity === 'high'
-                                ? 'bg-red-100 text-red-800 border-2 border-red-300'
-                                : report.severity === 'medium'
-                                ? 'bg-orange-100 text-orange-800 border-2 border-orange-300'
-                                : 'bg-yellow-100 text-yellow-800 border-2 border-yellow-300'
-                            }`}
-                          >
-                            {report.severity.toUpperCase()}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-1 font-mono">
-                          📍 {report.lat.toFixed(4)}, {report.lng.toFixed(4)}
-                        </p>
-                        {report.description && (
-                          <p className="text-sm text-gray-700 mt-2">{report.description}</p>
-                        )}
-                        <p className="text-xs text-gray-500 mt-3 font-medium">
-                          🕒 {new Date(report.date).toLocaleString()}
-                        </p>
-                      </div>
+                <div className="mt-5 space-y-5">
+                  <ImageUpload selectedImage={selectedImage} onImageSelect={handleImageSelect} onClear={handleClear} />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <CropSelector crops={Object.keys(CROPS)} selectedCrop={selectedCrop} onCropChange={setSelectedCrop} />
+                    <div className="flex items-end">
+                      <button
+                        onClick={handlePredict}
+                        disabled={!selectedImage || loading}
+                        className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary-700 text-white font-semibold shadow-sm hover:bg-primary-800 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+                        {loading ? 'Analyzing…' : 'Run analysis'}
+                      </button>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
 
-        {/* Footer */}
-        <footer className="text-center mt-12 text-slate-600">
-          <p className="text-sm font-medium">Powered by EfficientNet & TensorFlow Lite</p>
-          <p className="text-xs text-slate-500 mt-2">© 2024 CropIntel - AI-Powered Agriculture</p>
+                  {error && (
+                    <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-900">
+                      <div className="text-sm font-semibold">Something went wrong</div>
+                      <div className="text-sm mt-1">{error}</div>
+                    </div>
+                  )}
+
+                  {prediction && (
+                    <>
+                      <PredictionResults prediction={prediction} />
+                      <Diagnosis
+                        disease={prediction.disease}
+                        crop={selectedCrop}
+                        confidence={
+                          typeof prediction.confidence === 'number' && prediction.confidence <= 1
+                            ? prediction.confidence * 100
+                            : prediction.confidence
+                        }
+                        isHealthy={prediction.is_healthy}
+                      />
+                      <DiseaseInfo diseaseName={prediction.disease} crop={selectedCrop} />
+                      <ExportResults prediction={prediction} crop={selectedCrop} imageUrl={imageUrl} />
+                    </>
+                  )}
+                </div>
+              </section>
+            </div>
+
+            <aside className="lg:col-span-1 space-y-6">
+              <TipsAndGuidelines />
+
+              <div className="surface rounded-2xl p-6">
+                <h3 className="text-base font-semibold text-slate-900">Alerts</h3>
+                <p className="text-sm text-slate-600 mt-1">
+                  Register a farm location to receive outbreak notifications within 250 miles.
+                </p>
+                <div className="mt-4 sm:hidden">
+                  <FarmerRegistration onRegister={handleFarmerRegister} crops={Object.keys(CROPS)} />
+                </div>
+              </div>
+            </aside>
+          </div>
+        )}
+
+        {activeView === 'history' && (
+          <section className="surface rounded-2xl p-6">
+            <PredictionHistory onSelectHistory={handleHistorySelect} />
+          </section>
+        )}
+
+        {activeView === 'outbreaks' && (
+          <section className="surface rounded-2xl p-6">
+            <div className="mb-4">
+              <h2 className="text-base font-semibold text-slate-900">Outbreak map</h2>
+              <p className="text-sm text-slate-600 mt-1">
+                Click to report a potential outbreak and help track disease spread.
+              </p>
+            </div>
+            <div className="bg-white rounded-xl p-4 border border-slate-200">
+              <USOutbreakMap reports={outbreakReports} onReportSubmit={handleOutbreakReport} />
+            </div>
+          </section>
+        )}
+
+        <footer className="text-center mt-10 mb-6 text-slate-500">
+          <p className="text-xs">Models: EfficientNet / TensorFlow Lite</p>
         </footer>
       </div>
     </main>

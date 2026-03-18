@@ -59,7 +59,10 @@ img[src*="marker"][src*="default"] {
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  background:
+    radial-gradient(1200px 600px at 20% 0%, rgba(112, 152, 112, 0.18), transparent 55%),
+    radial-gradient(900px 500px at 90% 10%, rgba(120, 160, 120, 0.16), transparent 60%),
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%);
   min-height: 100vh;
   overflow-x: hidden;
 }
@@ -97,5 +100,9 @@ img:not([src]) {
   
   .gradient-text {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-blue-600;
+  }
+
+  .surface {
+    @apply bg-white/90 backdrop-blur border border-slate-200/80 shadow-sm;
   }
 }

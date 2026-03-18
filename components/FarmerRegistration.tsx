@@ -75,7 +75,7 @@ export default function FarmerRegistration({ onRegister, crops }: FarmerRegistra
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors flex items-center gap-2 shadow-lg"
+        className="px-4 py-2 bg-primary-700 hover:bg-primary-800 text-white rounded-xl font-semibold transition-colors flex items-center gap-2 shadow-sm"
       >
         <MapPin className="w-4 h-4" />
         Register Your Farm
@@ -120,7 +120,7 @@ export default function FarmerRegistration({ onRegister, crops }: FarmerRegistra
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="e.g., Smith Family Farm"
-                    className="w-full px-4 py-2.5 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    className="w-full px-4 py-2.5 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all"
                   />
                 </div>
 
@@ -133,7 +133,7 @@ export default function FarmerRegistration({ onRegister, crops }: FarmerRegistra
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="farmer@example.com"
-                    className="w-full px-4 py-2.5 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    className="w-full px-4 py-2.5 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all"
                   />
                 </div>
 
@@ -148,7 +148,7 @@ export default function FarmerRegistration({ onRegister, crops }: FarmerRegistra
                       value={formData.lat}
                       onChange={(e) => setFormData({ ...formData, lat: e.target.value })}
                       placeholder="Latitude"
-                      className="flex-1 px-4 py-2.5 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                      className="flex-1 px-4 py-2.5 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all"
                     />
                     <input
                       type="number"
@@ -156,12 +156,12 @@ export default function FarmerRegistration({ onRegister, crops }: FarmerRegistra
                       value={formData.lng}
                       onChange={(e) => setFormData({ ...formData, lng: e.target.value })}
                       placeholder="Longitude"
-                      className="flex-1 px-4 py-2.5 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                      className="flex-1 px-4 py-2.5 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-600 transition-all"
                     />
                   </div>
                   <button
                     onClick={handleGetLocation}
-                    className="w-full px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+                    className="w-full px-4 py-2 bg-primary-100 hover:bg-primary-200 text-primary-800 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
                   >
                     <MapPin className="w-4 h-4" />
                     Use My Current Location
@@ -190,14 +190,14 @@ export default function FarmerRegistration({ onRegister, crops }: FarmerRegistra
                 </div>
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
-                  <p className="text-xs text-blue-700">
-                    <strong>Note:</strong> You'll receive alerts for disease outbreaks within 250 miles of your registered location for the crops you select.
+                  <p className="text-xs text-primary-800">
+                    <strong>Note:</strong> You&apos;ll receive alerts for disease outbreaks within 250 miles of your registered location for the crops you select.
                   </p>
                 </div>
 
                 <button
                   onClick={handleSubmit}
-                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-6 rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+                  className="w-full bg-gradient-to-r from-primary-700 to-primary-800 hover:from-primary-800 hover:to-primary-900 text-white font-semibold py-3 px-6 rounded-lg transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md transform hover:scale-[1.02]"
                 >
                   <Save className="w-5 h-5" />
                   Register Farm

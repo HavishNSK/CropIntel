@@ -298,7 +298,7 @@ export default function NotificationSystem({
       {/* Notification Bell Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-3 bg-white rounded-xl border-2 border-slate-200 hover:border-blue-400 shadow-lg hover:shadow-xl transition-all"
+        className="relative p-3 bg-white rounded-xl border-2 border-slate-200 hover:border-primary-400 shadow-sm hover:shadow-md transition-all"
         aria-label="Notifications"
       >
         <Bell className="w-6 h-6 text-slate-700" />
@@ -325,7 +325,7 @@ export default function NotificationSystem({
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b-2 border-slate-200">
               <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                <Bell className="w-5 h-5 text-blue-600" />
+                <Bell className="w-5 h-5 text-primary-700" />
                 Disease Alerts
                 {unreadCount > 0 && (
                   <span className="px-2 py-1 bg-red-500 text-white text-xs rounded-full">
@@ -337,7 +337,7 @@ export default function NotificationSystem({
                 {unreadCount > 0 && (
                   <button
                     onClick={markAllAsRead}
-                    className="text-xs text-blue-600 hover:text-blue-700 font-semibold px-2 py-1 hover:bg-blue-50 rounded-lg transition-colors"
+                    className="text-xs text-primary-700 hover:text-primary-800 font-semibold px-2 py-1 hover:bg-primary-50 rounded-lg transition-colors"
                   >
                     Mark all read
                   </button>
@@ -358,7 +358,7 @@ export default function NotificationSystem({
                   <Bell className="w-12 h-12 mx-auto mb-3 opacity-50" />
                   <p className="font-semibold">No alerts yet</p>
                   <p className="text-sm mt-1">
-                    You'll be notified when outbreaks occur within 250 miles
+                    You&apos;ll be notified when outbreaks occur within 250 miles
                   </p>
                 </div>
               ) : (

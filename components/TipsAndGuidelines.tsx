@@ -1,84 +1,84 @@
 'use client'
 
 import { useState } from 'react'
+import { Camera, ChevronDown, CheckCircle2, TriangleAlert } from 'lucide-react'
 
 export default function TipsAndGuidelines() {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-xl">
+    <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between w-full text-left group"
+        className="flex items-center justify-between w-full text-left group gap-4"
       >
-        <h3 className="text-xl font-extrabold text-gray-900 flex items-center gap-3">
-          <span className="text-3xl">📸</span>
-          <span>Tips for Best Results</span>
+        <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
+          <span className="p-2 rounded-xl bg-primary-50 border border-primary-100">
+            <Camera className="w-4 h-4 text-primary-700" />
+          </span>
+          <span>Capture tips</span>
         </h3>
-        <svg
-          className={`w-7 h-7 text-gray-700 transition-transform duration-300 group-hover:text-primary-600 ${isOpen ? 'rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-        </svg>
+        <ChevronDown
+          className={`w-5 h-5 text-slate-600 transition-transform duration-200 group-hover:text-primary-700 ${isOpen ? 'rotate-180' : ''}`}
+        />
       </button>
 
       {isOpen && (
-        <div className="mt-6 space-y-5 text-gray-700 animate-fadeIn">
-          <div className="bg-white/60 rounded-xl p-5 border border-gray-200">
-            <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2 text-lg">
-              <span className="text-2xl">📷</span>
-              Image Quality
+        <div className="mt-5 space-y-4 text-slate-700">
+          <div className="rounded-xl p-4 border border-slate-200 bg-slate-50/60">
+            <h4 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+              <Camera className="w-4 h-4 text-primary-700" />
+              Image quality
             </h4>
             <ul className="space-y-2">
               {['Use clear, well-lit photos', 'Ensure the leaf/disease area is in focus', 'Avoid blurry or dark images', 'Take photos in natural daylight when possible'].map((tip, i) => (
                 <li key={i} className="flex items-start gap-2">
-                  <span className="text-primary-600 mt-1">✓</span>
+                  <CheckCircle2 className="w-4 h-4 text-primary-700 mt-0.5 flex-shrink-0" />
                   <span>{tip}</span>
                 </li>
               ))}
             </ul>
           </div>
 
-          <div className="bg-white/60 rounded-xl p-5 border border-gray-200">
-            <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2 text-lg">
-              <span className="text-2xl">🎯</span>
-              What to Capture
+          <div className="rounded-xl p-4 border border-slate-200 bg-slate-50/60">
+            <h4 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700">
+                2
+              </span>
+              What to capture
             </h4>
             <ul className="space-y-2">
               {['Focus on the affected area of the plant', 'Include enough context (entire leaf or affected region)', 'Capture both sides of leaves if symptoms are visible', 'Avoid including too much background'].map((tip, i) => (
                 <li key={i} className="flex items-start gap-2">
-                  <span className="text-primary-600 mt-1">✓</span>
+                  <CheckCircle2 className="w-4 h-4 text-primary-700 mt-0.5 flex-shrink-0" />
                   <span>{tip}</span>
                 </li>
               ))}
             </ul>
           </div>
 
-          <div className="bg-white/60 rounded-xl p-5 border border-gray-200">
-            <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2 text-lg">
-              <span className="text-2xl">⚡</span>
-              Best Practices
+          <div className="rounded-xl p-4 border border-slate-200 bg-slate-50/60">
+            <h4 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700">
+                3
+              </span>
+              Best practices
             </h4>
             <ul className="space-y-2">
               {['Take multiple photos from different angles', 'Include healthy parts for comparison if possible', 'Note the crop type and growth stage', 'Check predictions match visual symptoms'].map((tip, i) => (
                 <li key={i} className="flex items-start gap-2">
-                  <span className="text-primary-600 mt-1">✓</span>
+                  <CheckCircle2 className="w-4 h-4 text-primary-700 mt-0.5 flex-shrink-0" />
                   <span>{tip}</span>
                 </li>
               ))}
             </ul>
           </div>
 
-          <div className="p-5 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-xl shadow-md">
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
             <div className="flex items-start gap-3">
-              <svg className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <p className="text-sm text-yellow-900 font-medium">
-                <strong>Remember:</strong> AI predictions are a tool to assist diagnosis. Always verify results with agricultural experts, especially for treatment decisions.
+              <TriangleAlert className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-900">
+                <span className="font-semibold">Reminder:</span> Predictions support field decisions—confirm with local agronomists or extension services before treatment.
               </p>
             </div>
           </div>

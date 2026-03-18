@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { Image as ImageIcon, Upload, X } from 'lucide-react'
 
 interface ImageUploadProps {
   selectedImage: File | null
@@ -54,44 +55,27 @@ export default function ImageUpload({
     <div>
       {!imageUrl ? (
         <div
-          className={`border-2 border-dashed rounded-xl p-12 text-center transition-all duration-300 bg-slate-50 ${
+          className={`border border-dashed rounded-2xl p-10 text-center transition-all duration-200 bg-slate-50/60 ${
             dragActive
-              ? 'border-blue-500 bg-blue-50 scale-[1.02] shadow-lg'
-              : 'border-slate-300 hover:border-blue-400 hover:bg-white'
+              ? 'border-primary-500 bg-white shadow-md'
+              : 'border-slate-300 hover:border-slate-400 hover:bg-white'
           }`}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
         >
-          <div className="mb-6">
-            <div className="mx-auto w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-              <svg
-                className="h-12 w-12 text-blue-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
-            </div>
+          <div className="mx-auto w-12 h-12 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center mb-4">
+            <ImageIcon className="w-6 h-6 text-primary-700" />
           </div>
-          <p className="text-xl font-bold text-slate-900 mb-2">
-            Upload Crop Image
-          </p>
-          <p className="text-sm text-slate-600 mb-6">
-            Drag and drop an image here, or click the button below
-          </p>
+          <p className="text-base font-semibold text-slate-900 mb-1">Upload a leaf photo</p>
+          <p className="text-sm text-slate-600 mb-5">Drag & drop, or choose a file.</p>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="px-8 py-3 bg-gradient-to-r from-blue-600 to-primary-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-primary-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-colors shadow-sm"
           >
-            Choose File
+            <Upload className="w-4 h-4" />
+            Choose file
           </button>
           <input
             ref={fileInputRef}
@@ -102,8 +86,8 @@ export default function ImageUpload({
           />
         </div>
       ) : (
-        <div className="relative group bg-white rounded-2xl p-4 border-2 border-slate-200 shadow-lg">
-          <div className="relative w-full h-auto max-h-[500px] flex items-center justify-center bg-slate-50 rounded-xl overflow-hidden">
+        <div className="relative group bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+          <div className="relative w-full h-auto max-h-[520px] flex items-center justify-center bg-slate-50 rounded-xl overflow-hidden border border-slate-200">
             <img
               src={imageUrl}
               alt="Crop image preview"
@@ -117,11 +101,9 @@ export default function ImageUpload({
           </div>
           <button
             onClick={onClear}
-            className="absolute top-6 right-6 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-2 font-semibold text-sm"
+            className="absolute top-6 right-6 px-3 py-2 bg-white/90 hover:bg-white text-slate-900 rounded-xl transition-colors shadow-sm border border-slate-200 flex items-center gap-2 font-semibold text-sm"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="w-4 h-4" />
             Remove
           </button>
         </div>
