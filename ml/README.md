@@ -52,6 +52,27 @@ pip install -r requirements.txt
 python scripts/download_datasets.py
 ```
 
+### Optional: improve soybean healthy-class coverage
+
+If soybean healthy predictions are weak, add extra healthy soybean images from:
+- [Soybean Healthy and Diseased Images Dataset (Mendeley)](https://data.mendeley.com/datasets/w8vm4mm8t4/1)
+
+Place extracted data in one of:
+- `ml/data/soybean_mendeley/Healthy/`
+- `ml/data/soybean_healthy/Healthy/`
+- `ml/data/soybean_extra/Healthy/`
+
+The loader auto-includes these healthy images during soybean training.
+
+By default it also uses **`~/Soybean Healthy and Diseased Images Dataset/Soybean Healthy`** when that folder exists (same class label: **Healthy**). To point elsewhere:
+
+```bash
+export CROPINTEL_SOYBEAN_HEALTHY_DIRS="/path/to/Soybean Healthy:/path/to/more/healthy"
+python -m ml.training.train_crop --crop soybean
+```
+
+(On macOS/Linux, separate multiple folders with `:` in that variable.)
+
 ## Training
 
 ### Train a single crop model:

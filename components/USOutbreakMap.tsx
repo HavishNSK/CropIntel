@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { MapPin, AlertTriangle, X, Save } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import type { OutbreakReport } from '@/lib/outbreakReport'
 
 // Dynamically import Google Maps component to avoid SSR issues
 const GoogleMapComponent = dynamic(() => import('./GoogleMap'), { 
@@ -18,23 +19,14 @@ const GoogleMapComponent = dynamic(() => import('./GoogleMap'), {
   )
 })
 
-interface OutbreakReport {
-  id: string
-  lat: number
-  lng: number
-  crop: string
-  disease: string
-  severity: 'low' | 'medium' | 'high'
-  date: string
-  description: string
-}
-
 interface USOutbreakMapProps {
   reports?: OutbreakReport[]
   onReportSubmit?: (report: OutbreakReport) => void
+  /** Reporter status for new submissions from this browser */
+  reporterVerified: boolean
 }
 
-export default function USOutbreakMap({ reports = [], onReportSubmit }: USOutbreakMapProps) {
+export default function USOutbreakMap({ reports = [], onReportSubmit, reporterVerified }: USOutbreakMapProps) {
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [showReportForm, setShowReportForm] = useState(false)
   
@@ -77,6 +69,7 @@ export default function USOutbreakMap({ reports = [], onReportSubmit }: USOutbre
       severity: formData.severity,
       date: new Date().toISOString(),
       description: formData.description,
+      reporterVerified,
     }
 
     if (onReportSubmit) {

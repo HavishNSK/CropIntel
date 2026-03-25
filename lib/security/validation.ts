@@ -30,7 +30,7 @@ const VALID_CROPS = ['corn', 'rice', 'soybean', 'wheat'] as const
  * Validates crop parameter with strict whitelist
  */
 export const cropSchema = z.enum(VALID_CROPS, {
-  errorMap: () => ({ message: 'Invalid crop type. Must be one of: corn, rice, soybean, wheat' }),
+  message: 'Invalid crop type. Must be one of: corn, rice, soybean, wheat',
 })
 
 /**

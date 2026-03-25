@@ -156,7 +156,47 @@ export const DISEASE_INFO: Record<string, DiseaseInfo> = {
     severity: 'medium',
     affectedCrops: ['soybean']
   },
-  
+  'Sudden Death Syndrone': {
+    name: 'Sudden Death Syndrome',
+    description:
+      'A soil-borne fungal disease (Fusarium virguliforme) that causes interveinal chlorosis, necrosis, and early defoliation; often worse in compacted or wet soils.',
+    symptoms: [
+      'Yellowing between leaf veins',
+      'Brown necrotic patches on leaves',
+      'Premature leaf drop',
+      'Root rot and crown discoloration'
+    ],
+    treatment: [
+      'Improve drainage and reduce soil compaction',
+      'Use resistant varieties where available',
+      'Fungicide seed treatments may help establishment'
+    ],
+    prevention: [
+      'Rotate crops',
+      'Manage soybean cyst nematode',
+      'Avoid excessive early-season stress'
+    ],
+    severity: 'high',
+    affectedCrops: ['soybean']
+  },
+  'Yellow Mosaic': {
+    name: 'Yellow Mosaic',
+    description:
+      'Viral disease (often soybean mosaic virus) spread by aphids, causing mottled yellow and green patterns on leaves.',
+    symptoms: ['Mottled light and dark green areas', 'Leaf distortion', 'Stunted growth in severe cases'],
+    treatment: [
+      'Control aphid vectors where practical',
+      'Remove nearby virus reservoirs if identified'
+    ],
+    prevention: [
+      'Use virus-free seed',
+      'Plant resistant varieties',
+      'Manage weeds that host the virus'
+    ],
+    severity: 'medium',
+    affectedCrops: ['soybean']
+  },
+
   // Wheat Diseases
   'Leaf Rust': {
     name: 'Leaf Rust',

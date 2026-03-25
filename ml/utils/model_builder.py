@@ -5,7 +5,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers, applications
 from tensorflow.keras.applications.efficientnet import preprocess_input as efficientnet_preprocess_input
-from typing import Dict
+from typing import Optional
 
 from ml.config import MODEL_CONFIG, CROPS
 
@@ -20,7 +20,7 @@ def efficientnet_preprocess(x):
     return efficientnet_preprocess_input(x)
 
 
-def build_model(num_classes: int, crop: str) -> keras.Model:
+def build_model(num_classes: int, crop: str, *, from_scratch: bool = False) -> keras.Model:
     """
     Build a transfer learning model for crop disease classification.
     
@@ -30,21 +30,30 @@ def build_model(num_classes: int, crop: str) -> keras.Model:
     Args:
         num_classes: Number of disease classes (including healthy)
         crop: Crop name for logging
+        from_scratch: If True, ImageNet weights are not loaded; the full EfficientNet
+            is trainable from random initialization (accuracy starts low, training is slower).
         
     Returns:
         Compiled Keras model
     """
     config = MODEL_CONFIG
-    
+
+    weights: Optional[str] = None if from_scratch else config["weights"]
+
     # Load base model (EfficientNetB0)
     base_model = getattr(applications, config["base_model"])(
         include_top=config["include_top"],
-        weights=config["weights"],
+        weights=weights,
         input_shape=config["input_shape"]
     )
-    
-    # Freeze base model initially (will unfreeze later in fine-tuning)
-    base_model.trainable = False
+
+    if from_scratch or weights is None:
+        # Random backbone: must train all layers; forward must follow global training mode
+        # so batch norm / dropout behave correctly.
+        base_model.trainable = True
+    else:
+        # Freeze base model initially (will unfreeze later in fine-tuning)
+        base_model.trainable = False
     
     # Build model
     inputs = keras.Input(shape=config["input_shape"])
@@ -53,8 +62,11 @@ def build_model(num_classes: int, crop: str) -> keras.Model:
     # Using registered function so it can be serialized/deserialized properly
     x = layers.Lambda(efficientnet_preprocess, name="efficientnet_preprocess")(inputs)
     
-    # Base model
-    x = base_model(x, training=False)
+    # Base model: frozen pretrained stacks use inference BN; trainable backbone follows fit/predict mode.
+    if base_model.trainable:
+        x = base_model(x)
+    else:
+        x = base_model(x, training=False)
     
     # Global average pooling
     x = layers.GlobalAveragePooling2D()(x)
@@ -73,11 +85,10 @@ def build_model(num_classes: int, crop: str) -> keras.Model:
     
     model = keras.Model(inputs, outputs, name=f"{crop}_disease_classifier")
     
-    # Compile model with very low learning rate for Phase 1 to prevent divergence
-    # Reduced to 1e-5 (0.00001) to prevent gradient explosion and wild guessing
+    # Phase 1 (frozen backbone): moderate LR for classifier head convergence.
     model.compile(
-        optimizer=keras.optimizers.Adam(learning_rate=0.00001),
-        loss='categorical_crossentropy',
+        optimizer=keras.optimizers.Adam(learning_rate=0.0001),
+        loss=keras.losses.CategoricalCrossentropy(label_smoothing=0.05),
         metrics=['accuracy']
     )
     
@@ -99,10 +110,10 @@ def unfreeze_model(model: keras.Model, fine_tune_at: int = 100):
     for layer in base_model.layers[:-fine_tune_at]:
         layer.trainable = False
     
-    # Recompile with lower learning rate for fine-tuning
+    # Phase 2 (unfrozen top layers): lower LR to avoid destroying pretrained features.
     model.compile(
-        optimizer=keras.optimizers.Adam(learning_rate=0.0001),
-        loss='categorical_crossentropy',
+        optimizer=keras.optimizers.Adam(learning_rate=0.00001),
+        loss=keras.losses.CategoricalCrossentropy(label_smoothing=0.05),
         metrics=['accuracy']
     )
     

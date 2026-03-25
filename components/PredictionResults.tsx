@@ -15,10 +15,19 @@ interface Prediction {
 
 interface PredictionResultsProps {
   prediction: Prediction
+  /** Shown when regional disease filter was applied */
+  regionNote?: string
+}
+
+/** Model may send 0–1 or 0–100; UI always shows percent to one decimal. */
+function toConfidencePercent(value: number): number {
+  if (value > 0 && value <= 1) return value * 100
+  return value
 }
 
 export default function PredictionResults({
   prediction,
+  regionNote,
 }: PredictionResultsProps) {
   const getStatusColor = () => {
     if (prediction.is_healthy) {
@@ -48,6 +57,11 @@ export default function PredictionResults({
         </svg>
         Results
       </h2>
+      {regionNote && (
+        <p className="text-xs text-slate-600 mb-4 -mt-2 px-1 py-2 rounded-lg bg-sky-50 border border-sky-100">
+          {regionNote}
+        </p>
+      )}
 
       {/* Main Result */}
       <div className="rounded-xl p-5 mb-6 border border-slate-200 bg-slate-50/60">
@@ -65,7 +79,7 @@ export default function PredictionResults({
               Confidence
             </h3>
             <p className="text-2xl font-semibold text-primary-700 mt-1 tabular-nums">
-              {prediction.confidence}%
+              {Math.min(100, Math.max(0, toConfidencePercent(prediction.confidence))).toFixed(1)}%
             </p>
           </div>
         </div>
@@ -92,25 +106,30 @@ export default function PredictionResults({
           Other labels
         </h3>
         <div className="space-y-3">
-          {prediction.all_predictions.map((pred, index) => (
-            <div
-              key={index}
-              className="bg-white rounded-xl p-4 flex items-center justify-between transition-all duration-200 border border-slate-200 hover:border-primary-300 hover:bg-slate-50/50"
-            >
-              <span className="text-slate-900 font-medium">{pred.disease}</span>
-              <div className="flex items-center gap-5">
-                <div className="w-40 bg-slate-200 rounded-full h-2">
-                  <div
-                    className="bg-gradient-to-r from-primary-600 to-blue-600 h-2 rounded-full transition-all duration-500"
-                    style={{ width: `${pred.confidence}%` }}
-                  />
+          {prediction.all_predictions.map((pred, index) => {
+            const pctRaw = toConfidencePercent(pred.confidence)
+            const pctClamped = Math.min(100, Math.max(0, pctRaw))
+            const pctOneDecimal = pctClamped.toFixed(1)
+            return (
+              <div
+                key={index}
+                className="bg-white rounded-xl p-4 flex items-center justify-between transition-all duration-200 border border-slate-200 hover:border-primary-300 hover:bg-slate-50/50"
+              >
+                <span className="text-slate-900 font-medium">{pred.disease}</span>
+                <div className="flex items-center gap-5">
+                  <div className="w-40 bg-slate-200 rounded-full h-2">
+                    <div
+                      className="bg-gradient-to-r from-primary-600 to-blue-600 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${pctOneDecimal}%` }}
+                    />
+                  </div>
+                  <span className="text-slate-700 font-semibold w-16 text-right tabular-nums">
+                    {pctOneDecimal}%
+                  </span>
                 </div>
-                <span className="text-slate-700 font-semibold w-16 text-right tabular-nums">
-                  {pred.confidence.toFixed(1)}%
-                </span>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>

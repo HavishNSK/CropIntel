@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       // Handle validation errors gracefully
       if (error instanceof ZodError) {
-        const errorMessages = error.errors.map((e) => e.message).join(', ')
+        const errorMessages = error.issues.map((e) => e.message).join(', ')
         return createSecureResponse(
           { error: `Validation failed: ${errorMessages}` },
           400
@@ -163,6 +163,16 @@ export async function POST(request: NextRequest) {
     // OWASP: Prevent information disclosure
     console.error('Prediction error:', error)
     
+    // Surface safe, user-actionable image quality errors from inference.
+    const errorMessage = error instanceof Error ? error.message : 'Prediction failed'
+    if (
+      errorMessage.toLowerCase().includes('retake the image') ||
+      errorMessage.toLowerCase().includes('clear plant leaf') ||
+      errorMessage.toLowerCase().includes('appears blurry')
+    ) {
+      return createSecureResponse({ error: errorMessage }, 400)
+    }
+
     // Return generic error message without exposing internal details
     return createSecureResponse(
       { error: 'Prediction failed. Please try again later.' },

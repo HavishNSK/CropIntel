@@ -7,12 +7,17 @@ interface ImageUploadProps {
   selectedImage: File | null
   onImageSelect: (file: File | null) => void
   onClear: () => void
+  /** Override default upload prompt (e.g. "Past photo") */
+  title?: string
+  hint?: string
 }
 
 export default function ImageUpload({
   selectedImage,
   onImageSelect,
   onClear,
+  title = 'Upload a leaf photo',
+  hint = 'Drag & drop, or choose a file.',
 }: ImageUploadProps) {
   const [dragActive, setDragActive] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -68,8 +73,8 @@ export default function ImageUpload({
           <div className="mx-auto w-12 h-12 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center mb-4">
             <ImageIcon className="w-6 h-6 text-primary-700" />
           </div>
-          <p className="text-base font-semibold text-slate-900 mb-1">Upload a leaf photo</p>
-          <p className="text-sm text-slate-600 mb-5">Drag & drop, or choose a file.</p>
+          <p className="text-base font-semibold text-slate-900 mb-1">{title}</p>
+          <p className="text-sm text-slate-600 mb-5">{hint}</p>
           <button
             onClick={() => fileInputRef.current?.click()}
             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-colors shadow-sm"

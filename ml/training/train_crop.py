@@ -14,7 +14,7 @@ from tensorflow.keras.callbacks import (
 )
 
 from ml.config import (
-    MODELS_DIR, TRAINING_CONFIG, MODEL_VERSION_FORMAT, CROPS
+    MODELS_DIR, TRAINING_CONFIG, MODEL_VERSION_FORMAT, CROPS, MODEL_CONFIG
 )
 from ml.utils.data_loader import CropDatasetLoader
 from ml.utils.model_builder import build_model, unfreeze_model, efficientnet_preprocess
@@ -22,20 +22,29 @@ from ml.utils.evaluation import evaluate_model
 from ml.utils.tflite_converter import convert_to_tflite
 
 
-def train_crop_model(crop: str, epochs: int = None, fine_tune: bool = True):
+def train_crop_model(
+    crop: str,
+    epochs: int = None,
+    fine_tune: bool = True,
+    from_scratch: bool = False,
+):
     """
     Train a disease classification model for a specific crop.
     
     Args:
         crop: Crop name (corn, soybean, wheat, rice)
         epochs: Number of training epochs (defaults to config)
-        fine_tune: Whether to fine-tune base model layers
+        fine_tune: Whether to run a second phase with a lower learning rate
+        from_scratch: If True, do not load ImageNet weights; train EfficientNet from
+            random init (early accuracy starts near chance, not ~90% transfer learning)
     """
     if crop not in CROPS:
         raise ValueError(f"Unknown crop: {crop}")
     
     print(f"\n{'='*60}")
     print(f"Training {crop.upper()} Disease Classification Model")
+    if from_scratch:
+        print("(backbone: random init — no ImageNet weights)")
     print(f"{'='*60}\n")
     
     # Create version
@@ -67,7 +76,11 @@ def train_crop_model(crop: str, epochs: int = None, fine_tune: bool = True):
     
     # Build model
     print("Building model...")
-    model = build_model(num_classes=len(class_names), crop=crop)
+    model = build_model(
+        num_classes=len(class_names),
+        crop=crop,
+        from_scratch=from_scratch,
+    )
     
     # Callbacks - using .keras format for better custom function handling
     checkpoint_path = model_dir / "checkpoint.keras"
@@ -81,7 +94,7 @@ def train_crop_model(crop: str, epochs: int = None, fine_tune: bool = True):
         ),
         EarlyStopping(
             monitor='val_accuracy',
-            patience=15,  # Increased patience to allow model more time to learn
+            patience=20,
             restore_best_weights=True,
             verbose=1,
             min_delta=0.001  # Minimum change to qualify as improvement
@@ -96,8 +109,11 @@ def train_crop_model(crop: str, epochs: int = None, fine_tune: bool = True):
         CSVLogger(model_dir / "training_log.csv")
     ]
     
-    # Initial training (frozen base model)
-    print("\nPhase 1: Training with frozen base model...")
+    # Phase 1: frozen ImageNet backbone + head, or full net from random init
+    if from_scratch:
+        print("\nPhase 1: Training full model from random initialization...")
+    else:
+        print("\nPhase 1: Training with frozen base model...")
     epochs_phase1 = (epochs or TRAINING_CONFIG["epochs"]) // 2
     
     history1 = model.fit(
@@ -109,10 +125,18 @@ def train_crop_model(crop: str, epochs: int = None, fine_tune: bool = True):
         verbose=1
     )
     
-    # Fine-tuning (unfreeze top layers)
+    # Fine-tuning: partial unfreeze (pretrained) or lower LR on full model (from scratch)
     if fine_tune:
-        print("\nPhase 2: Fine-tuning top layers...")
-        model = unfreeze_model(model, fine_tune_at=100)
+        if from_scratch:
+            print("\nPhase 2: Lower learning rate (full model)...")
+            model.compile(
+                optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5),
+                loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.05),
+                metrics=["accuracy"],
+            )
+        else:
+            print("\nPhase 2: Fine-tuning top layers...")
+            model = unfreeze_model(model, fine_tune_at=100)
         
         epochs_phase2 = (epochs or TRAINING_CONFIG["epochs"]) - epochs_phase1
         
@@ -167,6 +191,8 @@ def train_crop_model(crop: str, epochs: int = None, fine_tune: bool = True):
         "class_names": class_names,
         "model_architecture": MODEL_CONFIG["base_model"],
         "fine_tuned": fine_tune,
+        "from_scratch": from_scratch,
+        "backbone_weights": None if from_scratch else MODEL_CONFIG["weights"],
         "metrics": metrics
     }
     
@@ -188,11 +214,17 @@ if __name__ == "__main__":
                        help="Number of training epochs")
     parser.add_argument("--no-fine-tune", action="store_true",
                        help="Skip fine-tuning phase")
-    
+    parser.add_argument(
+        "--from-scratch",
+        action="store_true",
+        help="Do not load ImageNet weights; train EfficientNet from random init (slower, accuracy rises gradually)",
+    )
+
     args = parser.parse_args()
-    
+
     train_crop_model(
         crop=args.crop,
         epochs=args.epochs,
-        fine_tune=not args.no_fine_tune
+        fine_tune=not args.no_fine_tune,
+        from_scratch=args.from_scratch,
     )

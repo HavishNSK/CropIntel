@@ -11,6 +11,37 @@ from PIL import Image
 from ml.config import MODELS_DIR, CONFIDENCE_THRESHOLD, CROPS
 
 
+def _is_complete_model_version(crop_dir: Path, version_name: str) -> bool:
+    """Weights + class names; skips empty dirs and runs stopped before metadata export."""
+    vd = crop_dir / version_name
+    if not vd.is_dir():
+        return False
+    has_weights = (vd / "model.tflite").exists() or (vd / "checkpoint.keras").exists()
+    has_labels = (vd / "metadata.json").exists() or (vd / "label_map.json").exists()
+    return has_weights and has_labels
+
+
+def _version_rank(crop_dir: Path, version_name: str) -> tuple:
+    """
+    Prefer fully finished exports (TFLite + evaluated metrics), then lexical version id
+    (timestamp suffix) so incomplete re-runs do not beat a good checkpoint.
+    """
+    vd = crop_dir / version_name
+    has_tflite = (vd / "model.tflite").exists()
+    has_metrics = (vd / "metrics.json").exists()
+    return (has_tflite, has_metrics, version_name)
+
+
+def _iter_usable_versions(crop_dir: Path) -> list[str]:
+    if not crop_dir.is_dir():
+        return []
+    return [
+        d.name
+        for d in crop_dir.iterdir()
+        if d.is_dir() and _is_complete_model_version(crop_dir, d.name)
+    ]
+
+
 class TFLitePredictor:
     """TensorFlow Lite model predictor for crop disease classification."""
     
@@ -32,8 +63,10 @@ class TFLitePredictor:
         if version:
             self.version = version
         else:
-            # Get latest version
-            versions = sorted([d.name for d in self.model_dir.iterdir() if d.is_dir()])
+            versions = sorted(
+                _iter_usable_versions(self.model_dir),
+                key=lambda n: _version_rank(self.model_dir, n),
+            )
             if not versions:
                 raise ValueError(f"No trained models found for {crop}")
             self.version = versions[-1]
@@ -219,10 +252,10 @@ class TFLitePredictor:
 
 
 def get_latest_model_version(crop: str) -> Optional[str]:
-    """Get the latest model version for a crop."""
+    """Best usable model version for a crop (prefers evaluated + TFLite export)."""
     model_dir = MODELS_DIR / crop
-    if not model_dir.exists():
-        return None
-    
-    versions = sorted([d.name for d in model_dir.iterdir() if d.is_dir()])
+    versions = sorted(
+        _iter_usable_versions(model_dir),
+        key=lambda n: _version_rank(model_dir, n),
+    )
     return versions[-1] if versions else None

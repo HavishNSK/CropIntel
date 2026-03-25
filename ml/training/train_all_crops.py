@@ -6,13 +6,18 @@ from ml.config import CROPS
 from ml.training.train_crop import train_crop_model
 
 
-def train_all_crops(epochs: int = None, fine_tune: bool = True):
+def train_all_crops(
+    epochs: int = None,
+    fine_tune: bool = True,
+    from_scratch: bool = False,
+):
     """
     Train models for all crops.
     
     Args:
         epochs: Number of training epochs per crop
-        fine_tune: Whether to fine-tune base model layers
+        fine_tune: Whether to run second-phase lower LR training
+        from_scratch: If True, random EfficientNet init (no ImageNet) for every crop
     """
     crops = list(CROPS.keys())
     
@@ -24,7 +29,12 @@ def train_all_crops(epochs: int = None, fine_tune: bool = True):
     
     for crop in crops:
         try:
-            model_dir = train_crop_model(crop, epochs=epochs, fine_tune=fine_tune)
+            model_dir = train_crop_model(
+                crop,
+                epochs=epochs,
+                fine_tune=fine_tune,
+                from_scratch=from_scratch,
+            )
             results[crop] = {"status": "success", "model_dir": str(model_dir)}
         except Exception as e:
             print(f"\nError training {crop}: {e}\n")
@@ -46,10 +56,16 @@ if __name__ == "__main__":
                        help="Number of training epochs per crop")
     parser.add_argument("--no-fine-tune", action="store_true",
                        help="Skip fine-tuning phase")
-    
+    parser.add_argument(
+        "--from-scratch",
+        action="store_true",
+        help="Train each crop from random EfficientNet init (no ImageNet weights)",
+    )
+
     args = parser.parse_args()
-    
+
     train_all_crops(
         epochs=args.epochs,
-        fine_tune=not args.no_fine_tune
+        fine_tune=not args.no_fine_tune,
+        from_scratch=args.from_scratch,
     )

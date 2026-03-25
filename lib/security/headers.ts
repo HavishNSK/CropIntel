@@ -20,44 +20,35 @@
 import { NextResponse } from 'next/server'
 
 /**
- * Security headers configuration
- * 
- * Note: CSP policy may need adjustment based on your specific needs
- * (e.g., if you use external CDNs, analytics, etc.)
+ * CSP: intentionally no `upgrade-insecure-requests`.
+ * That directive breaks http://localhost when NODE_ENV=production (`next start` after build):
+ * the browser rewrites /_next/static/... to https://localhost/... which has no TLS, so CSS/JS fail and the app is unstyled.
+ * Real HTTPS deployments still get HSTS below when NODE_ENV=production.
  */
-const SECURITY_HEADERS = {
-  /**
-   * Content-Security-Policy
-   * Prevents XSS attacks by controlling resource loading
-   * 
-   * Policy breakdown:
-   * - default-src 'self': Only allow resources from same origin
-   * - script-src 'self' 'unsafe-inline' 'unsafe-eval': Allow scripts (adjust for production)
-   * - style-src 'self' 'unsafe-inline': Allow inline styles (needed for Tailwind)
-   * - img-src 'self' data: blob:: Allow images from same origin, data URIs, and blob URIs
-   * - connect-src 'self' https://maps.googleapis.com https://agrio-api-gateway-6it0wqn1.uc.gateway.dev: Allow API connections
-   * - font-src 'self' data:: Allow fonts from same origin and data URIs
-   * - frame-src 'none': Disallow iframes (prevents clickjacking)
-   * - object-src 'none': Disallow plugins
-   * - base-uri 'self': Restrict base tag URLs
-   * - form-action 'self': Restrict form submissions
-   * - frame-ancestors 'none': Prevent embedding in iframes
-   * - upgrade-insecure-requests: Upgrade HTTP to HTTPS
-   */
-  'Content-Security-Policy': [
+function contentSecurityPolicy(): string {
+  return [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https://maps.googleapis.com https://*.googleapis.com",
-    "connect-src 'self' https://maps.googleapis.com https://agrio-api-gateway-6it0wqn1.uc.gateway.dev",
+    "connect-src 'self' https://maps.googleapis.com",
     "font-src 'self' data:",
     "frame-src 'none'",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
-    "upgrade-insecure-requests",
-  ].join('; '),
+  ].join('; ')
+}
+
+/**
+ * Security headers configuration
+ *
+ * Note: CSP policy may need adjustment based on your specific needs
+ * (e.g., if you use external CDNs, analytics, etc.)
+ */
+const SECURITY_HEADERS = {
+  'Content-Security-Policy': contentSecurityPolicy(),
 
   /**
    * X-Frame-Options

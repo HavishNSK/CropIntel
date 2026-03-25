@@ -40,11 +40,6 @@ const DEFAULT_RATE_LIMITS: Record<string, RateLimitConfig> = {
     windowMs: 60 * 1000, // 1 minute window
     message: 'Too many prediction requests. Please wait before trying again.',
   },
-  '/api/agrio': {
-    maxRequests: 60, // 60 requests per minute for Agrio API proxy
-    windowMs: 60 * 1000, // 1 minute window
-    message: 'Too many API requests. Please wait before trying again.',
-  },
   // Add more endpoint-specific limits as needed
   default: {
     maxRequests: 100, // 100 requests per minute for general endpoints
@@ -70,7 +65,7 @@ const rateLimitStore = new Map<string, { count: number; resetAt: number }>()
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000
 setInterval(() => {
   const now = Date.now()
-  for (const [key, value] of rateLimitStore.entries()) {
+  for (const [key, value] of Array.from(rateLimitStore.entries())) {
     if (value.resetAt < now) {
       rateLimitStore.delete(key)
     }

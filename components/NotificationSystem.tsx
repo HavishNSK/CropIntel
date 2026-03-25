@@ -10,17 +10,7 @@ import {
   type FarmerLocation,
   type Notification,
 } from '@/lib/notifications'
-
-interface OutbreakReport {
-  id: string
-  lat: number
-  lng: number
-  crop: string
-  disease: string
-  severity: 'low' | 'medium' | 'high'
-  date: string
-  description: string
-}
+import type { OutbreakReport } from '@/lib/outbreakReport'
 
 interface NotificationSystemProps {
   outbreaks: OutbreakReport[]
@@ -241,7 +231,7 @@ export default function NotificationSystem({
         farmerId: closestFarmer.farmer.id,
         outbreakId: outbreakLocation.id,
         distance: closestFarmer.distance,
-        message: `🔴 HIGH ALERT: ${outbreakLocation.disease} detected in ${outbreakLocation.crop} ${closestFarmer.distance.toFixed(1)} miles away`,
+        message: `🔴 HIGH ALERT: ${outbreakLocation.disease} detected in ${outbreakLocation.crop} ${closestFarmer.distance.toFixed(1)} miles away (${targetOutbreak.reporterVerified === true ? 'verified farmer' : targetOutbreak.reporterVerified === false ? 'unverified farmer' : 'community report'})`,
         severity: outbreakLocation.severity,
         read: false,
         createdAt: new Date().toISOString(),
@@ -394,6 +384,19 @@ export default function NotificationSystem({
                             </div>
                             {outbreak && (
                               <div className="mt-2 space-y-1">
+                                {outbreak.reporterVerified !== undefined && (
+                                  <p className="text-xs">
+                                    <span
+                                      className={`inline-block font-bold px-2 py-0.5 rounded-md border ${
+                                        outbreak.reporterVerified
+                                          ? 'bg-emerald-100 text-emerald-900 border-emerald-200'
+                                          : 'bg-slate-100 text-slate-700 border-slate-200'
+                                      }`}
+                                    >
+                                      {outbreak.reporterVerified ? 'Verified farmer' : 'Unverified farmer'}
+                                    </span>
+                                  </p>
+                                )}
                                 <p className="text-xs text-slate-600 flex items-center gap-1">
                                   <MapPin className="w-3 h-3" />
                                   {notification.distance.toFixed(1)} miles away

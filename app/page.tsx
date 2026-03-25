@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
-import { Bell, MapPin, Sparkles, History as HistoryIcon, ArrowRight, Loader2 } from 'lucide-react'
+import { Bell, MapPin, Sparkles, History as HistoryIcon, ArrowRight, Loader2, Camera, ArrowLeftRight } from 'lucide-react'
 import ImageUpload from '@/components/ImageUpload'
 import CropSelector from '@/components/CropSelector'
+import StateSelector from '@/components/StateSelector'
 import PredictionResults from '@/components/PredictionResults'
 import DiseaseInfo from '@/components/DiseaseInfo'
 import PredictionHistory from '@/components/PredictionHistory'
@@ -14,23 +15,24 @@ import Diagnosis from '@/components/Diagnosis'
 import USOutbreakMap from '@/components/USOutbreakMap'
 import NotificationSystem from '@/components/NotificationSystem'
 import FarmerRegistration from '@/components/FarmerRegistration'
+import FarmerVerificationBadge from '@/components/FarmerVerificationBadge'
+import HealthComparisonPanel from '@/components/HealthComparisonPanel'
 import { savePredictionToHistory } from '@/components/PredictionHistory'
 import { CROPS } from '@/lib/crops'
-
-interface OutbreakReport {
-  id: string
-  lat: number
-  lng: number
-  crop: string
-  disease: string
-  severity: 'low' | 'medium' | 'high'
-  date: string
-  description: string
-}
+import type { OutbreakReport } from '@/lib/outbreakReport'
+import { loadFarmerProfile, saveFarmerProfile, type StoredFarmerProfile } from '@/lib/farmerProfile'
+import {
+  applyStateDiseaseFilter,
+  getRelevantDiseasesForCropState,
+  type PredictionPayload,
+} from '@/lib/stateDiseaseMap'
 
 export default function Home() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const [selectedCrop, setSelectedCrop] = useState<string>('corn')
+  const [selectedState, setSelectedState] = useState<string>('IA')
+  const [photoMode, setPhotoMode] = useState<'single' | 'compare'>('single')
+  const [farmerProfile, setFarmerProfile] = useState<StoredFarmerProfile | null>(null)
   const [prediction, setPrediction] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -47,6 +49,7 @@ export default function Home() {
       severity: 'high',
       date: new Date().toISOString(),
       description: 'Severe rust outbreak detected in corn fields. Multiple farms affected in the area.',
+      reporterVerified: false,
     },
     {
       id: 'high-severity-130-miles',
@@ -57,6 +60,7 @@ export default function Home() {
       severity: 'high',
       date: new Date().toISOString(),
       description: 'CRITICAL: Severe southern corn leaf blight outbreak detected. Immediate action required. Multiple farms at risk within 150-mile radius.',
+      reporterVerified: false,
     },
     {
       id: 'california-outbreak-1',
@@ -171,6 +175,24 @@ export default function Home() {
   ])
   const [farmerLocation, setFarmerLocation] = useState<{ lat: number; lng: number; crops: string[] } | null>(null)
 
+  useEffect(() => {
+    const p = loadFarmerProfile()
+    if (p) {
+      setFarmerProfile(p)
+      setFarmerLocation({ lat: p.lat, lng: p.lng, crops: p.crops })
+    }
+  }, [])
+
+  const applyRegionalFilter = useCallback(
+    (raw: PredictionPayload) => applyStateDiseaseFilter(raw, selectedCrop, selectedState),
+    [selectedCrop, selectedState]
+  )
+
+  const regionNote =
+    getRelevantDiseasesForCropState(selectedCrop, selectedState) !== null
+      ? `Regional filter: showing labels common for ${selectedCrop} in ${selectedState} (illustrative). Other states or crops may show all labels.`
+      : undefined
+
   const handlePredict = async () => {
     if (!selectedImage) {
       setError('Please select an image first')
@@ -197,20 +219,24 @@ export default function Home() {
       }
 
       const data = await response.json()
-      setPrediction(data)
-      
+      const rawPayload: PredictionPayload = {
+        disease: data.disease,
+        confidence: data.confidence,
+        is_healthy: data.is_healthy,
+        meets_threshold: data.meets_threshold,
+        all_predictions: data.all_predictions,
+      }
+      const filtered = applyRegionalFilter(rawPayload)
+      const merged = { ...data, ...filtered }
+      setPrediction(merged)
+
       // Save to history
       if (imageUrl) {
-        // Confidence comes as decimal (0.95) or percentage (95), normalize to percentage
-        const confidencePercent = typeof data.confidence === 'number' && data.confidence <= 1 
-          ? data.confidence * 100 
-          : data.confidence
-        savePredictionToHistory(
-          selectedCrop,
-          data.disease,
-          confidencePercent,
-          imageUrl
-        )
+        const confidencePercent =
+          typeof merged.confidence === 'number' && merged.confidence <= 1
+            ? merged.confidence * 100
+            : merged.confidence
+        savePredictionToHistory(selectedCrop, merged.disease, confidencePercent, imageUrl)
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred')
@@ -248,14 +274,36 @@ export default function Home() {
     setOutbreakReports([...outbreakReports, report])
   }
 
-  const handleFarmerRegister = (location: { lat: number; lng: number; crops: string[]; name: string }) => {
+  const handleFarmerRegister = (location: {
+    lat: number
+    lng: number
+    crops: string[]
+    name: string
+    email?: string
+    usdaFarmCode?: string
+    verifiedFarmer: boolean
+  }) => {
+    const profile: StoredFarmerProfile = {
+      name: location.name,
+      email: location.email,
+      lat: location.lat,
+      lng: location.lng,
+      crops: location.crops,
+      usdaFarmCode: location.usdaFarmCode,
+      verifiedFarmer: location.verifiedFarmer,
+    }
+    saveFarmerProfile(profile)
+    setFarmerProfile(profile)
     setFarmerLocation({
       lat: location.lat,
       lng: location.lng,
       crops: location.crops,
     })
-    // In a real app, this would be saved to a database
-    alert(`Farm "${location.name}" registered! You'll now receive alerts for outbreaks within 250 miles.`)
+    alert(
+      `Farm "${location.name}" registered! You'll now receive alerts for outbreaks within 250 miles.${
+        location.verifiedFarmer ? ' You are marked as a Verified farmer.' : ''
+      }`
+    )
   }
 
   return (
@@ -288,15 +336,12 @@ export default function Home() {
               >
                 Diagnose
               </a>
-              <a
-                href="/outbreaks"
-                className="px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              >
-                Outbreaks
-              </a>
             </nav>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              {farmerProfile && (
+                <FarmerVerificationBadge verified={farmerProfile.verifiedFarmer} compact />
+              )}
               <div className="hidden sm:block">
                 <FarmerRegistration onRegister={handleFarmerRegister} crops={Object.keys(CROPS)} />
               </div>
@@ -365,21 +410,58 @@ export default function Home() {
                   </div>
                 </div>
 
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPhotoMode('single')}
+                    className={`px-4 py-2 rounded-xl border text-sm font-semibold flex items-center gap-2 transition-all ${
+                      photoMode === 'single'
+                        ? 'bg-primary-700 text-white border-primary-700'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-primary-300'
+                    }`}
+                  >
+                    <Camera className="w-4 h-4" />
+                    Single photo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPhotoMode('compare')}
+                    className={`px-4 py-2 rounded-xl border text-sm font-semibold flex items-center gap-2 transition-all ${
+                      photoMode === 'compare'
+                        ? 'bg-primary-700 text-white border-primary-700'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-primary-300'
+                    }`}
+                  >
+                    <ArrowLeftRight className="w-4 h-4" />
+                    Past vs current
+                  </button>
+                </div>
+
                 <div className="mt-5 space-y-5">
-                  <ImageUpload selectedImage={selectedImage} onImageSelect={handleImageSelect} onClear={handleClear} />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <CropSelector crops={Object.keys(CROPS)} selectedCrop={selectedCrop} onCropChange={setSelectedCrop} />
-                    <div className="flex items-end">
-                      <button
-                        onClick={handlePredict}
-                        disabled={!selectedImage || loading}
-                        className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary-700 text-white font-semibold shadow-sm hover:bg-primary-800 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors"
-                      >
-                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-                        {loading ? 'Analyzing…' : 'Run analysis'}
-                      </button>
-                    </div>
+                    <StateSelector selectedState={selectedState} onStateChange={setSelectedState} />
                   </div>
+
+                  {photoMode === 'single' && (
+                    <>
+                      <ImageUpload selectedImage={selectedImage} onImageSelect={handleImageSelect} onClear={handleClear} />
+                      <div className="flex items-end">
+                        <button
+                          onClick={handlePredict}
+                          disabled={!selectedImage || loading}
+                          className="w-full md:max-w-md inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary-700 text-white font-semibold shadow-sm hover:bg-primary-800 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+                          {loading ? 'Analyzing…' : 'Run analysis'}
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  {photoMode === 'compare' && (
+                    <HealthComparisonPanel crop={selectedCrop} applyRegionalFilter={applyRegionalFilter} />
+                  )}
 
                   {error && (
                     <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-900">
@@ -388,9 +470,9 @@ export default function Home() {
                     </div>
                   )}
 
-                  {prediction && (
+                  {photoMode === 'single' && prediction && (
                     <>
-                      <PredictionResults prediction={prediction} />
+                      <PredictionResults prediction={prediction} regionNote={regionNote} />
                       <Diagnosis
                         disease={prediction.disease}
                         crop={selectedCrop}
@@ -417,7 +499,10 @@ export default function Home() {
                 <p className="text-sm text-slate-600 mt-1">
                   Register a farm location to receive outbreak notifications within 250 miles.
                 </p>
-                <div className="mt-4 sm:hidden">
+                <div className="mt-4 sm:hidden space-y-3">
+                  {farmerProfile && (
+                    <FarmerVerificationBadge verified={farmerProfile.verifiedFarmer} />
+                  )}
                   <FarmerRegistration onRegister={handleFarmerRegister} crops={Object.keys(CROPS)} />
                 </div>
               </div>
@@ -440,7 +525,11 @@ export default function Home() {
               </p>
             </div>
             <div className="bg-white rounded-xl p-4 border border-slate-200">
-              <USOutbreakMap reports={outbreakReports} onReportSubmit={handleOutbreakReport} />
+              <USOutbreakMap
+                reports={outbreakReports}
+                onReportSubmit={handleOutbreakReport}
+                reporterVerified={farmerProfile?.verifiedFarmer ?? false}
+              />
             </div>
           </section>
         )}
