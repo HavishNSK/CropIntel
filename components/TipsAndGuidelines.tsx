@@ -7,7 +7,7 @@ export default function TipsAndGuidelines() {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
+    <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-6 shadow-sm">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center justify-between w-full text-left group gap-4"

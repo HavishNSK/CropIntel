@@ -2,6 +2,30 @@
 
 Machine learning pipeline for crop disease classification using TensorFlow Lite.
 
+## Working without Kaggle (collaborators)
+
+Training datasets are on Kaggle, but **you do not need Kaggle** to run the web app if someone shares trained weights.
+
+1. Install inference deps from repo root: `pip install -r ml/requirements-inference.txt`
+2. Download a zip of `ml/models/` (same layout as after training: `corn/<version>/…`, etc.):
+
+```bash
+export CROPINTEL_MODELS_URL='https://…/cropintel-models.zip'
+python3 -m ml.scripts.fetch_models
+```
+
+3. Run Next.js; `/api/predict` will call `scripts/predict.py`.
+
+**Docker:** see repo root `docker-compose.yml` and set `CROPINTEL_MODELS_URL` before `docker compose up`.
+
+**Maintainers:** package your local `ml/models/` for release:
+
+```bash
+python3 -m ml.scripts.package_models -o cropintel-models.zip
+```
+
+---
+
 ## Overview
 
 This ML pipeline trains deep learning models to classify crop diseases from leaf images. Models are trained using transfer learning with EfficientNetB0 and exported to TensorFlow Lite format for efficient production inference.
@@ -22,7 +46,8 @@ ml/
 │   ├── evaluation.py     # Model evaluation metrics
 │   └── tflite_converter.py # TFLite conversion
 ├── scripts/               # Utility scripts
-│   └── download_datasets.py # Download datasets from Kaggle
+│   ├── download_datasets.py # Download datasets from Kaggle
+│   └── create_synthetic_dataset.py # Random images for pipeline smoke tests (no Kaggle)
 ├── data/                  # Dataset storage (gitignored)
 └── models/                # Trained models (gitignored)
     └── {crop}/
@@ -36,9 +61,13 @@ ml/
 
 ## Setup
 
-1. Install dependencies:
+**Why a fresh `git clone` does not show “paper” accuracy:** `ml/data/` and `ml/models/` are not in git. You need either Kaggle downloads + training, or the synthetic smoke-test path below.
+
+### Option A — Real data (Kaggle)
+
+1. Install dependencies (from repository root):
 ```bash
-pip install -r requirements.txt
+pip install -r ml/requirements.txt
 ```
 
 2. Set up Kaggle API credentials:
@@ -49,7 +78,38 @@ pip install -r requirements.txt
 
 3. Download datasets:
 ```bash
-python scripts/download_datasets.py
+python -m ml.scripts.download_datasets
+```
+
+### Option B — No Kaggle (pipeline smoke test only)
+
+Random noise images are **not** diagnostically meaningful; they only prove training, evaluation, and TFLite export run on your machine.
+
+```bash
+pip install -r ml/requirements.txt
+python -m ml.scripts.create_synthetic_dataset --crop corn --force
+python -m ml.training.train_crop --crop corn --epochs 2 --no-fine-tune
+```
+
+Use `--crop all` on the synthetic script to populate every crop before `train_all_crops`.
+
+### Option C — Docker (same commands inside a container)
+
+From the repository root:
+
+```bash
+docker compose -f docker-compose.ml.yml build
+docker compose -f docker-compose.ml.yml run --rm ml \
+  python -m ml.scripts.create_synthetic_dataset --crop corn --force
+docker compose -f docker-compose.ml.yml run --rm ml \
+  python -m ml.training.train_crop --crop corn --epochs 2 --no-fine-tune
+```
+
+Download with Kaggle inside Docker (host must have `~/.kaggle/kaggle.json`):
+
+```bash
+docker compose -f docker-compose.ml.yml run --rm -v "$HOME/.kaggle:/root/.kaggle:ro" ml \
+  python -m ml.scripts.download_datasets
 ```
 
 ### Optional: improve soybean healthy-class coverage
@@ -77,12 +137,12 @@ python -m ml.training.train_crop --crop soybean
 
 ### Train a single crop model:
 ```bash
-python training/train_crop.py --crop corn --epochs 50
+python -m ml.training.train_crop --crop corn --epochs 50
 ```
 
 ### Train all crops:
 ```bash
-python training/train_all_crops.py --epochs 50
+python -m ml.training.train_all_crops --epochs 50
 ```
 
 ### Options:

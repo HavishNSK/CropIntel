@@ -113,19 +113,24 @@ export default function PredictionResults({
             return (
               <div
                 key={index}
-                className="bg-white rounded-xl p-4 flex items-center justify-between transition-all duration-200 border border-slate-200 hover:border-primary-300 hover:bg-slate-50/50"
+                className="bg-white rounded-xl border border-slate-200 p-4 transition-all duration-200 hover:border-primary-300 hover:bg-slate-50/50"
               >
-                <span className="text-slate-900 font-medium">{pred.disease}</span>
-                <div className="flex items-center gap-5">
-                  <div className="w-40 bg-slate-200 rounded-full h-2">
-                    <div
-                      className="bg-gradient-to-r from-primary-600 to-blue-600 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${pctOneDecimal}%` }}
-                    />
+                {/* Stacked on phones; row layout from md up */}
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
+                  <p className="min-w-0 flex-1 text-left text-sm font-medium leading-snug text-slate-900 md:text-base">
+                    {pred.disease}
+                  </p>
+                  <div className="flex w-full min-w-0 items-center gap-3 md:max-w-md md:flex-[1_1_40%]">
+                    <div className="min-h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-200">
+                      <div
+                        className="h-2 max-w-full rounded-full bg-gradient-to-r from-primary-600 to-blue-600 transition-all duration-500"
+                        style={{ width: `${pctClamped}%` }}
+                      />
+                    </div>
+                    <span className="min-w-[4.5rem] shrink-0 text-right text-sm font-semibold tabular-nums text-slate-700 md:text-base">
+                      {pctOneDecimal}%
+                    </span>
                   </div>
-                  <span className="text-slate-700 font-semibold w-16 text-right tabular-nums">
-                    {pctOneDecimal}%
-                  </span>
                 </div>
               </div>
             )

@@ -1,0 +1,28 @@
+# CropIntel ML stack: reproducible Python + TensorFlow without touching host Python.
+# Data and trained weights live in mounted volumes (still gitignored on the host).
+#
+# Quick smoke test (no Kaggle):
+#   docker compose -f docker-compose.ml.yml build
+#   docker compose -f docker-compose.ml.yml run --rm ml \
+#     python -m ml.scripts.create_synthetic_dataset --crop corn --force
+#   docker compose -f docker-compose.ml.yml run --rm ml \
+#     python -m ml.training.train_crop --crop corn --epochs 2 --no-fine-tune
+#
+# With Kaggle (mount token; dataset terms must be accepted on the website):
+#   docker compose -f docker-compose.ml.yml run --rm -v "$HOME/.kaggle:/root/.kaggle:ro" ml \
+#     python -m ml.scripts.download_datasets
+
+services:
+  ml:
+    build:
+      context: .
+      dockerfile: Dockerfile.ml
+    image: cropintel-ml:local
+    working_dir: /app
+    environment:
+      PYTHONPATH: /app
+    volumes:
+      - ./ml/data:/app/ml/data
+      - ./ml/models:/app/ml/models
+      # Optional Kaggle token (only if downloading inside Docker):
+      #   docker compose -f docker-compose.ml.yml run --rm -v ~/.kaggle:/root/.kaggle:ro ml ...

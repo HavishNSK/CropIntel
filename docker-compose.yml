@@ -1,0 +1,22 @@
+# CropIntel local stack — no Kaggle if you set CROPINTEL_MODELS_URL to a .zip of ml/models/
+#
+# Usage:
+#   export CROPINTEL_MODELS_URL='https://github.com/ORG/REPO/releases/download/v1/cropintel-models.zip'
+#   docker compose up --build
+#
+# Or bind-mount models you already have on the host:
+#   docker compose run --rm -v ./ml/models:/app/ml/models app npm run dev
+
+services:
+  app:
+    build: .
+    ports:
+      - "3050:3050"
+    environment:
+      - CROPINTEL_MODELS_URL=${CROPINTEL_MODELS_URL:-}
+      - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
+    volumes:
+      - ./ml/models:/app/ml/models
+      - ./:/app
+      - /app/node_modules
+      - /app/.next

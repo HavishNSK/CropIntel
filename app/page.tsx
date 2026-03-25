@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import { Bell, MapPin, Sparkles, History as HistoryIcon, ArrowRight, Loader2, Camera, ArrowLeftRight } from 'lucide-react'
 import ImageUpload from '@/components/ImageUpload'
@@ -12,7 +13,6 @@ import PredictionHistory from '@/components/PredictionHistory'
 import ExportResults from '@/components/ExportResults'
 import TipsAndGuidelines from '@/components/TipsAndGuidelines'
 import Diagnosis from '@/components/Diagnosis'
-import USOutbreakMap from '@/components/USOutbreakMap'
 import NotificationSystem from '@/components/NotificationSystem'
 import FarmerRegistration from '@/components/FarmerRegistration'
 import FarmerVerificationBadge from '@/components/FarmerVerificationBadge'
@@ -26,6 +26,15 @@ import {
   getRelevantDiseasesForCropState,
   type PredictionPayload,
 } from '@/lib/stateDiseaseMap'
+
+const USOutbreakMap = dynamic(() => import('@/components/USOutbreakMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex min-h-[280px] w-full items-center justify-center rounded-xl border border-slate-200 bg-slate-50 sm:min-h-[420px]">
+      <Loader2 className="h-8 w-8 animate-spin text-primary-700" aria-label="Loading map" />
+    </div>
+  ),
+})
 
 export default function Home() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
@@ -307,13 +316,13 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6">
+    <main className="min-h-screen min-h-[100dvh] px-3 sm:px-4 py-4 sm:py-6 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
       <div className="mx-auto max-w-7xl">
         {/* Top bar */}
-        <header className="sticky top-0 z-40 -mx-4 px-4 py-3 backdrop-blur bg-white/70 border-b border-slate-200/60">
-          <div className="mx-auto max-w-7xl flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary-600 to-primary-700 text-white flex items-center justify-center shadow-sm overflow-hidden">
+        <header className="sticky top-0 z-40 -mx-3 sm:-mx-4 px-3 sm:px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-3 border-b border-slate-200/60 bg-white/95">
+          <div className="mx-auto max-w-7xl flex items-center justify-between gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="w-10 h-10 shrink-0 rounded-2xl bg-gradient-to-br from-primary-600 to-primary-700 text-white flex items-center justify-center shadow-sm overflow-hidden">
                 <Image
                   src="/brand/wheat-mark-transparent.png"
                   alt="CropIntel"
@@ -323,9 +332,9 @@ export default function Home() {
                   priority
                 />
               </div>
-              <div className="leading-tight">
-                <div className="text-sm font-semibold text-slate-900">CropIntel</div>
-                <div className="text-xs text-slate-500">Crop health insights</div>
+              <div className="leading-tight min-w-0">
+                <div className="text-sm font-semibold text-slate-900 truncate">CropIntel</div>
+                <div className="text-[11px] sm:text-xs text-slate-500 leading-snug">Crop health insights</div>
               </div>
             </div>
 
@@ -338,14 +347,14 @@ export default function Home() {
               </a>
             </nav>
 
-            <div className="flex items-center gap-2 flex-wrap justify-end">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap shrink-0 justify-end">
               {farmerProfile && (
                 <FarmerVerificationBadge verified={farmerProfile.verifiedFarmer} compact />
               )}
               <div className="hidden sm:block">
                 <FarmerRegistration onRegister={handleFarmerRegister} crops={Object.keys(CROPS)} />
               </div>
-              <div className="relative">
+              <div className="relative z-50">
                 <NotificationSystem outbreaks={outbreakReports} currentFarmerLocation={farmerLocation || undefined} />
               </div>
             </div>
@@ -353,13 +362,13 @@ export default function Home() {
         </header>
 
         {/* Hero */}
-        <section className="mt-8 mb-6">
+        <section className="mt-5 sm:mt-8 mb-5 sm:mb-6">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
             <div className="max-w-2xl">
-              <h1 className="text-3xl md:text-4xl font-semibold text-slate-900 tracking-tight">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-slate-900 tracking-tight text-balance">
                 Diagnose crop issues from a photo
               </h1>
-              <p className="mt-2 text-slate-600">
+              <p className="mt-2 text-sm sm:text-base text-slate-600">
                 Upload a leaf image, pick the crop, and get a ranked set of labels with confidence.
               </p>
             </div>
@@ -373,7 +382,7 @@ export default function Home() {
         </section>
 
         {/* Views */}
-        <div className="flex flex-wrap items-center gap-2 mb-6">
+        <div className="grid grid-cols-3 gap-2 mb-5 sm:mb-6 sm:flex sm:flex-wrap sm:items-center">
           {(
             [
               { id: 'diagnose', label: 'Diagnose', icon: Sparkles },
@@ -383,15 +392,16 @@ export default function Home() {
           ).map(({ id, label, icon: Icon }) => (
             <button
               key={id}
+              type="button"
               onClick={() => setActiveView(id)}
-              className={`px-4 py-2 rounded-xl border text-sm font-semibold transition-all flex items-center gap-2 ${
+              className={`touch-manipulation min-h-[44px] px-2 sm:px-4 py-2 rounded-xl border text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 sm:gap-2 ${
                 activeView === id
                   ? 'bg-primary-700 text-white border-primary-700'
                   : 'bg-white/70 text-slate-700 border-slate-200 hover:bg-white hover:border-primary-300'
               }`}
             >
-              <Icon className="w-4 h-4" />
-              {label}
+              <Icon className="w-4 h-4 shrink-0" />
+              <span className="truncate">{label}</span>
             </button>
           ))}
         </div>
@@ -399,7 +409,7 @@ export default function Home() {
         {activeView === 'diagnose' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              <section className="surface rounded-2xl p-6">
+              <section className="surface rounded-2xl p-4 sm:p-6">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div>
                     <h2 className="text-base font-semibold text-slate-900">Photo analysis</h2>
@@ -414,7 +424,7 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setPhotoMode('single')}
-                    className={`px-4 py-2 rounded-xl border text-sm font-semibold flex items-center gap-2 transition-all ${
+                    className={`touch-manipulation min-h-[44px] px-4 py-2 rounded-xl border text-sm font-semibold flex items-center gap-2 transition-all ${
                       photoMode === 'single'
                         ? 'bg-primary-700 text-white border-primary-700'
                         : 'bg-white text-slate-700 border-slate-200 hover:border-primary-300'
@@ -426,7 +436,7 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setPhotoMode('compare')}
-                    className={`px-4 py-2 rounded-xl border text-sm font-semibold flex items-center gap-2 transition-all ${
+                    className={`touch-manipulation min-h-[44px] px-4 py-2 rounded-xl border text-sm font-semibold flex items-center gap-2 transition-all ${
                       photoMode === 'compare'
                         ? 'bg-primary-700 text-white border-primary-700'
                         : 'bg-white text-slate-700 border-slate-200 hover:border-primary-300'
@@ -448,9 +458,10 @@ export default function Home() {
                       <ImageUpload selectedImage={selectedImage} onImageSelect={handleImageSelect} onClear={handleClear} />
                       <div className="flex items-end">
                         <button
+                          type="button"
                           onClick={handlePredict}
                           disabled={!selectedImage || loading}
-                          className="w-full md:max-w-md inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary-700 text-white font-semibold shadow-sm hover:bg-primary-800 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors"
+                          className="touch-manipulation min-h-[48px] w-full md:max-w-md inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary-700 text-white font-semibold shadow-sm hover:bg-primary-800 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors"
                         >
                           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
                           {loading ? 'Analyzing…' : 'Run analysis'}
@@ -494,7 +505,7 @@ export default function Home() {
             <aside className="lg:col-span-1 space-y-6">
               <TipsAndGuidelines />
 
-              <div className="surface rounded-2xl p-6">
+              <div className="surface rounded-2xl p-4 sm:p-6">
                 <h3 className="text-base font-semibold text-slate-900">Alerts</h3>
                 <p className="text-sm text-slate-600 mt-1">
                   Register a farm location to receive outbreak notifications within 250 miles.
@@ -511,20 +522,20 @@ export default function Home() {
         )}
 
         {activeView === 'history' && (
-          <section className="surface rounded-2xl p-6">
+          <section className="surface rounded-2xl p-4 sm:p-6">
             <PredictionHistory onSelectHistory={handleHistorySelect} />
           </section>
         )}
 
         {activeView === 'outbreaks' && (
-          <section className="surface rounded-2xl p-6">
+          <section className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-6 shadow-sm">
             <div className="mb-4">
               <h2 className="text-base font-semibold text-slate-900">Outbreak map</h2>
               <p className="text-sm text-slate-600 mt-1">
-                Click to report a potential outbreak and help track disease spread.
+                Tap or click to report a potential outbreak and help track disease spread.
               </p>
             </div>
-            <div className="bg-white rounded-xl p-4 border border-slate-200">
+            <div className="bg-white rounded-xl p-2 sm:p-4 border border-slate-200 -mx-1 sm:mx-0">
               <USOutbreakMap
                 reports={outbreakReports}
                 onReportSubmit={handleOutbreakReport}

@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { MapPin, Save, X } from 'lucide-react'
 import { mockValidateUsdaFarmCode } from '@/lib/farmerProfile'
-import { motion, AnimatePresence } from 'framer-motion'
 
 interface FarmerRegistrationProps {
   onRegister: (location: {
@@ -40,6 +39,15 @@ export default function FarmerRegistration({ onRegister, crops }: FarmerRegistra
     return () => {
       document.body.style.overflow = prev
     }
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   }, [isOpen])
 
   const handleGetLocation = () => {
@@ -120,20 +128,15 @@ export default function FarmerRegistration({ onRegister, crops }: FarmerRegistra
       </button>
 
       {mounted &&
+        isOpen &&
         createPortal(
-          <AnimatePresence>
-            {isOpen && (
-              <motion.div
+              <div
                 key="farm-registration-fullpage"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen flex-col bg-white overflow-hidden"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="farm-registration-title"
-          >
+                className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen flex-col overflow-hidden bg-white"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="farm-registration-title"
+              >
             <div className="flex items-center justify-between gap-4 px-5 sm:px-10 lg:px-16 py-4 sm:py-6 border-b border-slate-200 flex-shrink-0 bg-white">
               <h2
                 id="farm-registration-title"
@@ -269,9 +272,7 @@ export default function FarmerRegistration({ onRegister, crops }: FarmerRegistra
                 Register Farm
               </button>
             </div>
-              </motion.div>
-            )}
-          </AnimatePresence>,
+          </div>,
           document.body
         )}
     </>

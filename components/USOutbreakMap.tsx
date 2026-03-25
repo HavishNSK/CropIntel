@@ -1,22 +1,21 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import { MapPin, AlertTriangle, X, Save } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { MapPin, AlertTriangle, X, Save, Maximize2, Minimize2 } from 'lucide-react'
 import type { OutbreakReport } from '@/lib/outbreakReport'
 
 // Dynamically import Google Maps component to avoid SSR issues
-const GoogleMapComponent = dynamic(() => import('./GoogleMap'), { 
+const GoogleMapComponent = dynamic(() => import('./GoogleMap'), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full flex items-center justify-center bg-white rounded-xl border-2 border-slate-300" style={{ aspectRatio: '3/2', minHeight: '500px' }}>
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p className="text-blue-600 font-semibold">Loading Google Maps...</p>
+    <div className="flex h-full min-h-[280px] w-full items-center justify-center rounded-xl border-2 border-slate-300 bg-white sm:min-h-[400px]">
+      <div className="px-4 text-center">
+        <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600"></div>
+        <p className="text-sm font-semibold text-blue-600 sm:text-base">Loading Google Maps...</p>
       </div>
     </div>
-  )
+  ),
 })
 
 interface USOutbreakMapProps {
@@ -26,10 +25,157 @@ interface USOutbreakMapProps {
   reporterVerified: boolean
 }
 
+function triggerMapResize(map: google.maps.Map | null) {
+  if (!map || typeof google === 'undefined') return
+  window.setTimeout(() => {
+    google.maps.event.trigger(map, 'resize')
+  }, 120)
+}
+
+function getFullscreenElement(): Element | null {
+  const doc = document as Document & {
+    webkitFullscreenElement?: Element | null
+  }
+  return document.fullscreenElement ?? doc.webkitFullscreenElement ?? null
+}
+
+async function requestElementFullscreen(el: HTMLElement): Promise<boolean> {
+  const anyEl = el as HTMLElement & {
+    webkitRequestFullscreen?: () => void
+  }
+  try {
+    if (el.requestFullscreen) {
+      await el.requestFullscreen()
+      return true
+    }
+  } catch {
+    /* try webkit */
+  }
+  try {
+    if (anyEl.webkitRequestFullscreen) {
+      anyEl.webkitRequestFullscreen()
+      return true
+    }
+  } catch {
+    /* fall through */
+  }
+  return false
+}
+
+async function exitDocumentFullscreen(): Promise<void> {
+  const doc = document as Document & { webkitExitFullscreen?: () => void }
+  try {
+    if (document.fullscreenElement && document.exitFullscreen) {
+      await document.exitFullscreen()
+      return
+    }
+  } catch {
+    /* try webkit */
+  }
+  try {
+    if (doc.webkitExitFullscreen) {
+      doc.webkitExitFullscreen()
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function USOutbreakMap({ reports = [], onReportSubmit, reporterVerified }: USOutbreakMapProps) {
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [showReportForm, setShowReportForm] = useState(false)
-  
+  const mapCardRef = useRef<HTMLDivElement>(null)
+  const mapInstanceRef = useRef<google.maps.Map | null>(null)
+  const [browserFullscreen, setBrowserFullscreen] = useState(false)
+  /** iOS / browsers without element fullscreen */
+  const [layoutFullscreen, setLayoutFullscreen] = useState(false)
+
+  const expanded = browserFullscreen || layoutFullscreen
+
+  const handleMapReady = useCallback((map: google.maps.Map) => {
+    mapInstanceRef.current = map
+  }, [])
+
+  useEffect(() => {
+    const syncFs = () => {
+      const fsEl = getFullscreenElement()
+      setBrowserFullscreen(fsEl === mapCardRef.current)
+    }
+    syncFs()
+    document.addEventListener('fullscreenchange', syncFs)
+    document.addEventListener('webkitfullscreenchange', syncFs)
+    return () => {
+      document.removeEventListener('fullscreenchange', syncFs)
+      document.removeEventListener('webkitfullscreenchange', syncFs)
+    }
+  }, [])
+
+  useEffect(() => {
+    triggerMapResize(mapInstanceRef.current)
+  }, [expanded])
+
+  useEffect(() => {
+    const onResize = () => triggerMapResize(mapInstanceRef.current)
+    window.addEventListener('orientationchange', onResize)
+    window.addEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('orientationchange', onResize)
+      window.removeEventListener('resize', onResize)
+    }
+  }, [])
+
+  const exitAllFullscreen = useCallback(async () => {
+    if (getFullscreenElement()) {
+      await exitDocumentFullscreen()
+    }
+    setLayoutFullscreen(false)
+  }, [])
+
+  const toggleFullscreen = useCallback(async () => {
+    const el = mapCardRef.current
+    if (!el) return
+
+    if (expanded) {
+      await exitAllFullscreen()
+      triggerMapResize(mapInstanceRef.current)
+      return
+    }
+
+    const enteredFs = await requestElementFullscreen(el)
+    if (enteredFs) {
+      triggerMapResize(mapInstanceRef.current)
+      return
+    }
+
+    setLayoutFullscreen(true)
+    triggerMapResize(mapInstanceRef.current)
+  }, [expanded, exitAllFullscreen])
+
+  useEffect(() => {
+    if (!layoutFullscreen && !browserFullscreen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [layoutFullscreen, browserFullscreen])
+
+  useEffect(() => {
+    if (!expanded) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') void exitAllFullscreen()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [expanded, exitAllFullscreen])
+
+  useEffect(() => {
+    return () => {
+      document.body.style.removeProperty('overflow')
+      void exitDocumentFullscreen()
+    }
+  }, [])
+
   // Ensure modal closes on mount/unmount to prevent stuck overlays
   useEffect(() => {
     return () => {
@@ -87,54 +233,88 @@ export default function USOutbreakMap({ reports = [], onReportSubmit, reporterVe
   }
 
   return (
-    <div className="w-full relative">
-      {/* Google Maps Container */}
-      <div className="w-full relative bg-white rounded-xl border-2 border-slate-300 overflow-hidden shadow-lg" style={{ aspectRatio: '3/2', minHeight: '500px' }}>
-        <GoogleMapComponent
-          reports={reports}
-          onMapClick={handleMapClick}
-          center={{ lat: 39.8283, lng: -98.5795 }}
-          zoom={4}
-        />
+    <div className="relative w-full">
+      {/* Map card: explicit height so the map fills the area (no aspect-ratio gap) */}
+      <div
+        ref={mapCardRef}
+        className={`flex w-full flex-col overflow-hidden rounded-xl border-2 border-slate-300 bg-white shadow-lg ${
+          layoutFullscreen
+            ? 'fixed inset-0 z-[5000] h-[100dvh] max-h-[100dvh] min-h-0 w-full max-w-none rounded-none border-slate-300 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]'
+            : ''
+        } ${expanded ? 'h-full min-h-0' : ''}`}
+      >
+        <div
+          className={`relative flex w-full min-h-0 flex-col ${
+            expanded ? 'h-full min-h-0 flex-1' : ''
+          }`}
+        >
+          <div
+            className={`relative min-h-0 w-full overflow-hidden ${
+              expanded
+                ? 'min-h-0 flex-1'
+                : 'h-[min(52dvh,560px)] min-h-[280px] sm:min-h-[420px]'
+            }`}
+          >
+            <GoogleMapComponent
+              reports={reports}
+              onMapClick={handleMapClick}
+              center={{ lat: 39.8283, lng: -98.5795 }}
+              zoom={4}
+              showMapClickHint={false}
+              fullscreenControl
+              onMapReady={handleMapReady}
+            />
 
-        {/* Click instruction overlay */}
-        <div className="absolute bottom-6 left-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-5 py-3 rounded-lg shadow-xl z-[1000] border border-blue-800 pointer-events-none">
-          <p className="text-sm font-semibold flex items-center gap-2">
-            <MapPin className="w-5 h-5" />
-            Click anywhere on the map to report an outbreak
-          </p>
-        </div>
+            <div className="pointer-events-auto absolute right-2 top-2 z-[1001] flex gap-1 sm:right-3 sm:top-3">
+              <button
+                type="button"
+                onClick={() => void toggleFullscreen()}
+                className="touch-manipulation rounded-lg border border-slate-200 bg-white/95 px-2.5 py-2 text-slate-800 shadow-md backdrop-blur-sm transition hover:bg-white sm:px-3"
+                aria-label={expanded ? 'Exit fullscreen map' : 'Fullscreen map'}
+                title={expanded ? 'Exit fullscreen' : 'Fullscreen'}
+              >
+                {expanded ? (
+                  <Minimize2 className="h-5 w-5 sm:h-5 sm:w-5" />
+                ) : (
+                  <Maximize2 className="h-5 w-5 sm:h-5 sm:w-5" />
+                )}
+              </button>
+            </div>
 
-        {selectedLocation && !showReportForm && (
-          <div className="absolute top-6 right-6 bg-white rounded-lg shadow-xl p-4 border-2 border-blue-200 z-[1000] pointer-events-none">
-            <p className="text-sm font-bold text-slate-900 mb-1">📍 Selected Location</p>
-            <p className="text-xs text-slate-600 font-mono">
-              {selectedLocation.lat.toFixed(4)}, {selectedLocation.lng.toFixed(4)}
+            {selectedLocation && !showReportForm && (
+              <div className="pointer-events-none absolute left-2 top-12 z-[1000] max-w-[calc(100%-4rem)] rounded-lg border-2 border-blue-200 bg-white p-2 shadow-xl sm:left-3 sm:top-14 sm:p-3">
+                <p className="mb-0.5 text-[11px] font-bold text-slate-900 sm:text-xs">📍 Selected</p>
+                <p className="break-all font-mono text-[10px] text-slate-600 sm:text-xs">
+                  {selectedLocation.lat.toFixed(4)}, {selectedLocation.lng.toFixed(4)}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2 border-t border-slate-200 bg-slate-50 px-3 py-2.5 sm:px-4 sm:py-3">
+            <MapPin className="h-4 w-4 shrink-0 text-blue-700" />
+            <p className="text-xs font-semibold leading-snug text-slate-800 sm:text-sm">
+              Tap or click the map to report an outbreak
             </p>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Report Form Modal */}
-      <AnimatePresence>
-        {showReportForm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[2000] p-4"
+      {/* Report Form Modal — no AnimatePresence exit on full-screen layer (opacity-0 still captures clicks). */}
+      {showReportForm && (
+        <div className="fixed inset-0 z-[6000] flex items-end justify-center sm:items-center sm:p-4">
+          <div
+            role="presentation"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => {
               setShowReportForm(false)
               setSelectedLocation(null)
             }}
+          />
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative z-10 max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl border border-slate-200 bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-2xl sm:p-6 sm:pb-6"
           >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200"
-            >
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
                   <div className="p-2 bg-orange-100 rounded-lg">
@@ -230,10 +410,9 @@ export default function USOutbreakMap({ reports = [], onReportSubmit, reporterVe
                   Submit Report
                 </button>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

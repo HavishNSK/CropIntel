@@ -158,7 +158,7 @@ export default function HealthComparisonPanel({ crop, applyRegionalFilter }: Pro
         type="button"
         onClick={handleCompare}
         disabled={!pastFile || !currentFile || loading}
-        className="mt-6 w-full md:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-slate-900 text-white font-semibold shadow-sm hover:bg-slate-800 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors"
+        className="touch-manipulation mt-6 min-h-[48px] w-full md:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-slate-900 text-white font-semibold shadow-sm hover:bg-slate-800 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors"
       >
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowLeftRight className="w-4 h-4" />}
         {loading ? 'Analyzing both…' : 'Compare photos'}

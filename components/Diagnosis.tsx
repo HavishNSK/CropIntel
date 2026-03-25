@@ -70,13 +70,15 @@ export default function Diagnosis({ disease, crop, confidence, isHealthy }: Diag
   const confidenceInfo = getConfidenceLevel()
 
   return (
-    <div className="mt-6 bg-gradient-to-br from-white to-gray-50 rounded-2xl border-2 border-gray-200/50 p-8 shadow-xl">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-3xl font-extrabold text-gray-900 flex items-center gap-3">
-          <AlertCircle className="w-8 h-8 text-primary-600" />
-          Detailed Diagnosis
+    <div className="mt-6 bg-gradient-to-br from-white to-gray-50 rounded-2xl border-2 border-gray-200/50 p-4 shadow-xl sm:p-8">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <h3 className="flex items-center gap-2 text-2xl font-extrabold text-gray-900 sm:gap-3 sm:text-3xl">
+          <AlertCircle className="h-7 w-7 shrink-0 text-primary-600 sm:h-8 sm:w-8" />
+          <span className="min-w-0 leading-tight">Detailed Diagnosis</span>
         </h3>
-        <div className={`px-4 py-2 rounded-xl border-2 font-bold text-sm ${getSeverityColor()}`}>
+        <div
+          className={`w-fit shrink-0 rounded-xl border-2 px-3 py-1.5 text-xs font-bold sm:px-4 sm:py-2 sm:text-sm ${getSeverityColor()}`}
+        >
           {getSeverityLevel()} Severity
         </div>
       </div>
@@ -118,25 +120,26 @@ export default function Diagnosis({ disease, crop, confidence, isHealthy }: Diag
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b-2 border-gray-200 mb-6">
-        <div className="flex gap-2">
+      {/* Tabs — grid keeps all three inside the card on narrow screens */}
+      <div className="-mx-1 mb-6 border-b-2 border-gray-200 px-1 sm:mx-0 sm:px-0">
+        <div className="grid w-full grid-cols-3 gap-1 sm:gap-2">
           {[
             { id: 'assessment', label: 'Assessment', icon: AlertCircle },
             { id: 'treatment', label: 'Treatment', icon: Droplet },
-            { id: 'prevention', label: 'Prevention', icon: Shield }
+            { id: 'prevention', label: 'Prevention', icon: Shield },
           ].map(({ id, label, icon: Icon }) => (
             <button
               key={id}
-              onClick={() => setActiveTab(id as any)}
-              className={`px-6 py-3 font-semibold rounded-t-xl transition-all duration-300 flex items-center gap-2 ${
+              type="button"
+              onClick={() => setActiveTab(id as 'assessment' | 'treatment' | 'prevention')}
+              className={`flex min-h-[3.25rem] min-w-0 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-t-lg px-1.5 py-2 text-center text-[11px] font-semibold leading-tight transition-all duration-300 sm:flex-row sm:gap-2 sm:rounded-t-xl sm:px-4 sm:py-3 sm:text-sm ${
                 activeTab === id
                   ? 'bg-primary-600 text-white shadow-lg'
-                  : 'text-gray-600 hover:text-primary-600 hover:bg-gray-100'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-primary-600'
               }`}
             >
-              <Icon className="w-5 h-5" />
-              {label}
+              <Icon className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
+              <span className="break-words">{label}</span>
             </button>
           ))}
         </div>

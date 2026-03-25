@@ -17,10 +17,11 @@ export default function ImageUpload({
   onImageSelect,
   onClear,
   title = 'Upload a leaf photo',
-  hint = 'Drag & drop, or choose a file.',
+  hint = 'Drag & drop, choose a file, or take a photo.',
 }: ImageUploadProps) {
   const [dragActive, setDragActive] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault()
@@ -60,7 +61,7 @@ export default function ImageUpload({
     <div>
       {!imageUrl ? (
         <div
-          className={`border border-dashed rounded-2xl p-10 text-center transition-all duration-200 bg-slate-50/60 ${
+          className={`border border-dashed rounded-2xl p-6 sm:p-10 text-center transition-all duration-200 bg-slate-50/60 ${
             dragActive
               ? 'border-primary-500 bg-white shadow-md'
               : 'border-slate-300 hover:border-slate-400 hover:bg-white'
@@ -75,17 +76,36 @@ export default function ImageUpload({
           </div>
           <p className="text-base font-semibold text-slate-900 mb-1">{title}</p>
           <p className="text-sm text-slate-600 mb-5">{hint}</p>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-colors shadow-sm"
-          >
-            <Upload className="w-4 h-4" />
-            Choose file
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2 justify-center items-stretch sm:items-center max-w-md mx-auto w-full">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="touch-manipulation inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-colors shadow-sm"
+            >
+              <Upload className="w-4 h-4 shrink-0" />
+              Choose file
+            </button>
+            <button
+              type="button"
+              onClick={() => cameraInputRef.current?.click()}
+              className="touch-manipulation inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 bg-white text-slate-900 border-2 border-slate-200 rounded-xl font-semibold hover:bg-slate-50 transition-colors shadow-sm"
+            >
+              <ImageIcon className="w-4 h-4 shrink-0" />
+              Take photo
+            </button>
+          </div>
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            onChange={handleFileInput}
+            className="hidden"
+          />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
             onChange={handleFileInput}
             className="hidden"
           />
@@ -105,8 +125,9 @@ export default function ImageUpload({
             />
           </div>
           <button
+            type="button"
             onClick={onClear}
-            className="absolute top-6 right-6 px-3 py-2 bg-white/90 hover:bg-white text-slate-900 rounded-xl transition-colors shadow-sm border border-slate-200 flex items-center gap-2 font-semibold text-sm"
+            className="touch-manipulation absolute top-3 right-3 sm:top-6 sm:right-6 min-h-[44px] min-w-[44px] px-3 py-2 bg-white/90 hover:bg-white text-slate-900 rounded-xl transition-colors shadow-sm border border-slate-200 flex items-center justify-center gap-2 font-semibold text-sm"
           >
             <X className="w-4 h-4" />
             Remove

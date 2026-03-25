@@ -16,13 +16,10 @@ div[title*="For development purposes only"] {
   width: 0 !important;
 }
 
-/* Hide ALL Google Maps POI icons */
+/* Hide Google Maps default POI marker images only (scope to .gm-style — unscoped img rules break non-map UI) */
 .gm-style img[src*="poi"],
 .gm-style img[src*="place"],
-.gm-style img[src*="marker"][src*="default"],
-img[src*="poi"],
-img[src*="place"],
-img[src*="marker"][src*="default"] {
+.gm-style img[src*="marker"][src*="default"] {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
@@ -64,7 +61,10 @@ body {
     radial-gradient(900px 500px at 90% 10%, rgba(120, 160, 120, 0.16), transparent 60%),
     linear-gradient(180deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%);
   min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 /* Ensure images display correctly */
@@ -103,6 +103,6 @@ img:not([src]) {
   }
 
   .surface {
-    @apply bg-white/90 backdrop-blur border border-slate-200/80 shadow-sm;
+    @apply bg-white border border-slate-200/80 shadow-sm;
   }
 }

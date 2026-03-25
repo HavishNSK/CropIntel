@@ -1,7 +1,7 @@
 'use client'
 
 import { useLoadScript, GoogleMap, Marker, InfoWindow } from '@react-google-maps/api'
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { MapPin } from 'lucide-react'
 import type { OutbreakReport } from '@/lib/outbreakReport'
 
@@ -12,6 +12,12 @@ interface GoogleMapProps {
   onMapClick?: (lat: number, lng: number) => void
   center?: { lat: number; lng: number }
   zoom?: number
+  /** When false, hides the floating “click map” hint (parent may show its own). Default true. */
+  showMapClickHint?: boolean
+  /** Called when the Google Map instance is ready (e.g. to trigger resize after layout changes). */
+  onMapReady?: (map: google.maps.Map) => void
+  /** Maps API fullscreen control; set false when the parent provides its own fullscreen. Default true. */
+  fullscreenControl?: boolean
 }
 
 const mapContainerStyle = {
@@ -31,6 +37,9 @@ export default function GoogleMapComponent({
   onMapClick,
   center = defaultCenter,
   zoom = defaultZoom,
+  showMapClickHint = true,
+  onMapReady,
+  fullscreenControl = true,
 }: GoogleMapProps) {
   const [selectedReport, setSelectedReport] = useState<OutbreakReport | null>(null)
   const [mapCenter, setMapCenter] = useState(center)
@@ -62,6 +71,13 @@ export default function GoogleMapComponent({
       }
     },
     [onMapClick]
+  )
+
+  const handleMapLoad = useCallback(
+    (map: google.maps.Map) => {
+      onMapReady?.(map)
+    },
+    [onMapReady]
   )
 
   const getSeverityColor = (severity: string) => {
@@ -112,7 +128,7 @@ export default function GoogleMapComponent({
 
   if (loadError || loadingTimeout) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-slate-50 rounded-xl border-2 border-slate-200 min-h-[500px]">
+      <div className="flex h-full min-h-[280px] w-full items-center justify-center rounded-xl border-2 border-slate-200 bg-slate-50 sm:min-h-[400px]">
         <div className="text-center p-6">
           <MapPin className="w-12 h-12 text-slate-400 mx-auto mb-4" />
           <p className="text-slate-700 font-semibold mb-2 text-lg">Map Unavailable</p>
@@ -129,7 +145,7 @@ export default function GoogleMapComponent({
 
   if (!isLoaded) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-blue-50 rounded-xl border-2 border-blue-200 min-h-[500px]">
+      <div className="flex h-full min-h-[280px] w-full items-center justify-center rounded-xl border-2 border-blue-200 bg-blue-50 sm:min-h-[400px]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-blue-600 font-semibold">Loading Google Maps...</p>
@@ -142,7 +158,7 @@ export default function GoogleMapComponent({
   }
 
   return (
-    <div className="w-full h-full relative rounded-xl overflow-hidden">
+    <div className="relative h-full min-h-0 w-full overflow-hidden rounded-xl">
       <style dangerouslySetInnerHTML={{
         __html: `
           /* Hide Google Maps watermark and "For development purposes only" text */
@@ -160,16 +176,10 @@ export default function GoogleMapComponent({
             width: 0 !important;
             overflow: hidden !important;
           }
-          /* Hide ALL POI icons - very aggressive */
+          /* Hide default POI marker images only (avoid div[style*="place"] etc. — it breaks map controls) */
           .gm-style img[src*="poi"],
           .gm-style img[src*="place"],
-          .gm-style img[src*="marker"][src*="default"],
-          .gm-style img[alt*="marker"],
-          .gm-style img[alt*="POI"],
-          .gm-style img[alt*="place"],
-          img[src*="marker"][src*="default"],
-          img[src*="place"],
-          img[src*="poi"] {
+          .gm-style img[src*="marker"][src*="default"] {
             display: none !important;
             visibility: hidden !important;
             opacity: 0 !important;
@@ -177,30 +187,21 @@ export default function GoogleMapComponent({
             width: 0 !important;
             pointer-events: none !important;
           }
-          /* Hide POI containers */
-          .gm-style div[style*="poi"],
-          .gm-style div[style*="place"],
-          .gm-style div[style*="marker"][style*="default"],
-          .gm-style-iw,
-          .gm-style-iw-c,
-          .gm-style-iw-d {
-            display: none !important;
-            visibility: hidden !important;
-            opacity: 0 !important;
-          }
         `
       }} />
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
         center={mapCenter}
         zoom={zoom}
+        onLoad={handleMapLoad}
         onClick={handleMapClick}
         options={{
           disableDefaultUI: false,
           zoomControl: true,
           streetViewControl: false,
           mapTypeControl: true,
-          fullscreenControl: true,
+          fullscreenControl,
+          gestureHandling: 'greedy',
           clickableIcons: false, // Disable clickable POI icons
           restriction: {
             latLngBounds: {
@@ -309,7 +310,7 @@ export default function GoogleMapComponent({
               pixelOffset: new google.maps.Size(0, -10),
             }}
           >
-            <div className="p-3 min-w-[250px] max-w-[300px]">
+            <div className="p-3 min-w-[min(18rem,calc(100vw-3rem))] max-w-[min(300px,calc(100vw-2rem))]">
               <div className="flex items-start justify-between mb-2">
                 <h3 className="font-bold text-lg text-gray-900">
                   {selectedReport.crop.charAt(0).toUpperCase() + selectedReport.crop.slice(1)} - {selectedReport.disease}
@@ -371,12 +372,14 @@ export default function GoogleMapComponent({
       </GoogleMap>
 
       {/* Click instruction overlay */}
-      <div className="absolute bottom-6 left-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-5 py-3 rounded-lg shadow-xl z-10 border border-blue-800">
-        <p className="text-sm font-semibold flex items-center gap-2">
-          <MapPin className="w-5 h-5" />
-          Click anywhere on the map to report an outbreak
-        </p>
-      </div>
+      {showMapClickHint && (
+        <div className="absolute bottom-3 left-3 right-3 sm:left-6 sm:right-auto sm:bottom-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-3 py-2.5 sm:px-5 sm:py-3 rounded-lg shadow-xl z-10 border border-blue-800 pointer-events-none">
+          <p className="text-xs sm:text-sm font-semibold flex items-center gap-2">
+            <MapPin className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            Tap or click the map to report an outbreak
+          </p>
+        </div>
+      )}
     </div>
   )
 }

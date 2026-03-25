@@ -24,16 +24,22 @@ import { NextResponse } from 'next/server'
  * That directive breaks http://localhost when NODE_ENV=production (`next start` after build):
  * the browser rewrites /_next/static/... to https://localhost/... which has no TLS, so CSS/JS fail and the app is unstyled.
  * Real HTTPS deployments still get HSTS below when NODE_ENV=production.
+ *
+ * Google Maps JS API requires frames + broader connect/img/script hosts than `maps.googleapis.com` alone.
+ * @see https://developers.google.com/maps/documentation/javascript/content-security-policy
  */
 function contentSecurityPolicy(): string {
   return [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://maps.googleapis.com https://*.googleapis.com",
-    "connect-src 'self' https://maps.googleapis.com",
-    "font-src 'self' data:",
-    "frame-src 'none'",
+    // Next.js needs unsafe-inline / unsafe-eval (dev); Maps needs googleapis + gstatic + blob workers
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.googleapis.com https://*.gstatic.com *.google.com https://*.ggpht.com *.googleusercontent.com blob:",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com *.google.com *.googleusercontent.com",
+    "connect-src 'self' https://*.googleapis.com *.google.com https://*.gstatic.com data: blob:",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    // was frame-src 'none' — that blocks Maps’ iframes and leads to a blank map / broken UI
+    "frame-src 'self' *.google.com https://*.googleapis.com https://*.gstatic.com",
+    "worker-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -80,9 +86,11 @@ const SECURITY_HEADERS = {
    * - usb: Disable USB access
    */
   'Permissions-Policy': [
-    'camera=()',
+    // Allow same-origin camera for mobile "take photo" on leaf uploads
+    'camera=(self)',
     'microphone=()',
     'geolocation=(self)',
+    'fullscreen=(self)',
     'payment=()',
     'usb=()',
   ].join(', '),

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { WorldMap } from '@/components/ui/world-map'
 import { MapPin, AlertTriangle, X, Plus, Save } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 
 interface OutbreakReport {
   id: string
@@ -96,7 +96,7 @@ export default function OutbreakMap() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 py-8 px-4">
+    <div className="min-h-screen min-h-[100dvh] bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 py-6 sm:py-8 px-3 sm:px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
       <div className="container mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-8 text-center">
@@ -135,26 +135,23 @@ export default function OutbreakMap() {
           </div>
         </div>
 
-        {/* Report Form Modal */}
-        <AnimatePresence>
-          {showReportForm && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+        {/* Report Form Modal — avoid motion opacity on full-screen layer (invisible overlays still capture clicks). */}
+        {showReportForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div
+              role="presentation"
+              className="absolute inset-0"
               onClick={() => {
                 setShowReportForm(false)
                 setSelectedLocation(null)
               }}
+            />
+            <div
+              role="dialog"
+              aria-modal="true"
+              onClick={(e) => e.stopPropagation()}
+              className="relative z-10 max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-xl border border-slate-200 bg-white p-6 shadow-2xl"
             >
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                onClick={(e) => e.stopPropagation()}
-                className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 border border-slate-200"
-              >
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                     <AlertTriangle className="w-6 h-6 text-orange-500" />
@@ -239,10 +236,9 @@ export default function OutbreakMap() {
                     Submit Report
                   </button>
                 </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </div>
+          </div>
+        )}
 
         {/* Reports List */}
         <div className="bg-white rounded-xl shadow-lg p-6 border border-slate-200">

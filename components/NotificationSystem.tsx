@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Bell, X, AlertTriangle, MapPin, Check } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
 import {
   findAffectedFarmers,
-  createNotifications,
+  generateNotificationMessage,
   type OutbreakLocation,
   type FarmerLocation,
   type Notification,
@@ -17,16 +16,41 @@ interface NotificationSystemProps {
   currentFarmerLocation?: { lat: number; lng: number; crops: string[] }
 }
 
+const SEVERITY_SORT = { high: 0, medium: 1, low: 2 } as const
+
 export default function NotificationSystem({
   outbreaks,
   currentFarmerLocation,
 }: NotificationSystemProps) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isOpen, setIsOpen] = useState(false)
-  const [unreadCount, setUnreadCount] = useState(0)
+  /** Outbreak IDs the user dismissed — otherwise the sync effect recreates them */
+  const [dismissedOutbreakIds, setDismissedOutbreakIds] = useState<Set<string>>(() => new Set())
+  const rootRef = useRef<HTMLDivElement>(null)
 
-  // Simulate farmer locations across the US (in a real app, this would come from a database)
-  const [farmers] = useState<FarmerLocation[]>([
+  useEffect(() => {
+    if (!isOpen) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsOpen(false)
+    }
+    // Bubble-phase click avoids capture-phase pointer handlers stealing taps before button onClick runs.
+    const onDocumentClick = (e: MouseEvent) => {
+      const root = rootRef.current
+      if (root && !root.contains(e.target as Node)) setIsOpen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    document.addEventListener('click', onDocumentClick)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('click', onDocumentClick)
+    }
+  }, [isOpen])
+
+  /** Demo persona when no farm is registered — must match `findAffectedFarmers` ids */
+  const DEMO_FARMER_ID = 'farmer-1'
+
+  // Recompute when registration changes (useState initializer only runs once)
+  const farmers = useMemo<FarmerLocation[]>(() => [
     // Arkansas area farmers
     {
       id: 'farmer-1',
@@ -193,71 +217,72 @@ export default function NotificationSystem({
           } as FarmerLocation,
         ]
       : []),
-  ])
+  ], [currentFarmerLocation])
 
-  // Track if we've created the initial notification
-  const [hasCreatedNotification, setHasCreatedNotification] = useState(false)
+  const toOutbreakLocation = (report: OutbreakReport): OutbreakLocation => ({
+    id: report.id,
+    lat: report.lat,
+    lng: report.lng,
+    crop: report.crop,
+    disease: report.disease,
+    severity: report.severity,
+    date: report.date,
+    description: report.description,
+  })
 
-  // Create only ONE notification for the 130-mile high-severity outbreak
   useEffect(() => {
-    if (hasCreatedNotification) return
-    if (outbreaks.length === 0) return
-
-    // Find the specific outbreak that's 130 miles away (high-severity-130-miles)
-    const targetOutbreak = outbreaks.find((o) => o.id === 'high-severity-130-miles')
-    
-    if (!targetOutbreak) return
-
-    // Convert OutbreakReport to OutbreakLocation format
-    const outbreakLocation: OutbreakLocation = {
-      id: targetOutbreak.id,
-      lat: targetOutbreak.lat,
-      lng: targetOutbreak.lng,
-      crop: targetOutbreak.crop,
-      disease: targetOutbreak.disease,
-      severity: targetOutbreak.severity,
-      date: targetOutbreak.date,
-      description: targetOutbreak.description,
+    if (outbreaks.length === 0) {
+      setNotifications([])
+      return
     }
-    
-    // Find affected farmers - should be farmer-1 (John Smith) at 130 miles
-    const affectedFarmers = findAffectedFarmers(outbreakLocation, farmers)
-    
-    if (affectedFarmers.length > 0) {
-      // Create notification for the closest farmer only
-      const closestFarmer = affectedFarmers[0] // Already sorted by distance
-      const notification: Notification = {
-        id: `${outbreakLocation.id}-${closestFarmer.farmer.id}-${Date.now()}`,
-        farmerId: closestFarmer.farmer.id,
-        outbreakId: outbreakLocation.id,
-        distance: closestFarmer.distance,
-        message: `🔴 HIGH ALERT: ${outbreakLocation.disease} detected in ${outbreakLocation.crop} ${closestFarmer.distance.toFixed(1)} miles away (${targetOutbreak.reporterVerified === true ? 'verified farmer' : targetOutbreak.reporterVerified === false ? 'unverified farmer' : 'community report'})`,
-        severity: outbreakLocation.severity,
-        read: false,
-        createdAt: new Date().toISOString(),
+
+    const targetFarmerId = currentFarmerLocation ? 'current-user' : DEMO_FARMER_ID
+
+    setNotifications((prev) => {
+      const readByOutbreak = new Map<string, boolean>()
+      const createdByOutbreak = new Map<string, string>()
+      for (const n of prev) {
+        if (n.read) readByOutbreak.set(n.outbreakId, true)
+        createdByOutbreak.set(n.outbreakId, n.createdAt)
       }
 
-      setNotifications([notification])
-      setUnreadCount(1)
-      setHasCreatedNotification(true)
-      
-      // Show browser notification if available
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('Crop Disease Alert', {
-          body: notification.message,
-          icon: '/favicon.ico',
-          tag: notification.id,
+      const next: Notification[] = []
+      for (const report of outbreaks) {
+        if (dismissedOutbreakIds.has(report.id)) continue
+
+        const outbreakLocation = toOutbreakLocation(report)
+        const affected = findAffectedFarmers(outbreakLocation, farmers)
+        const match = affected.find((a) => a.farmer.id === targetFarmerId)
+        if (!match) continue
+
+        const verifiedTail =
+          report.reporterVerified === true
+            ? ' (verified farmer report)'
+            : report.reporterVerified === false
+              ? ' (unverified farmer report)'
+              : ' (community report)'
+
+        next.push({
+          id: `${report.id}-${targetFarmerId}`,
+          farmerId: targetFarmerId,
+          outbreakId: report.id,
+          distance: match.distance,
+          message: `${generateNotificationMessage(outbreakLocation, match.distance)}${verifiedTail}`,
+          severity: outbreakLocation.severity,
+          read: readByOutbreak.get(report.id) ?? false,
+          createdAt: createdByOutbreak.get(report.id) ?? new Date().toISOString(),
         })
       }
-    }
-  }, [outbreaks, farmers, hasCreatedNotification])
 
-  // Request notification permission on mount
-  useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission()
-    }
-  }, [])
+      next.sort((a, b) => {
+        const s = SEVERITY_SORT[a.severity] - SEVERITY_SORT[b.severity]
+        if (s !== 0) return s
+        return a.distance - b.distance
+      })
+
+      return next
+    })
+  }, [outbreaks, farmers, currentFarmerLocation, dismissedOutbreakIds])
 
   const markAsRead = (notificationId: string) => {
     setNotifications((prev) =>
@@ -265,185 +290,191 @@ export default function NotificationSystem({
         notif.id === notificationId ? { ...notif, read: true } : notif
       )
     )
-    setUnreadCount((prev) => Math.max(0, prev - 1))
   }
 
   const markAllAsRead = () => {
     setNotifications((prev) => prev.map((notif) => ({ ...notif, read: true })))
-    setUnreadCount(0)
   }
 
   const deleteNotification = (notificationId: string) => {
-    const notification = notifications.find((n) => n.id === notificationId)
-    if (notification && !notification.read) {
-      setUnreadCount((prev) => Math.max(0, prev - 1))
-    }
-    setNotifications((prev) => prev.filter((n) => n.id !== notificationId))
+    setNotifications((prev) => {
+      const n = prev.find((x) => x.id === notificationId)
+      if (n) {
+        setDismissedOutbreakIds((s) => new Set(s).add(n.outbreakId))
+      }
+      return prev.filter((x) => x.id !== notificationId)
+    })
   }
 
-  const unreadNotifications = notifications.filter((n) => !n.read)
+  const unreadCount = notifications.filter((n) => !n.read).length
 
   return (
-    <>
-      {/* Notification Bell Button */}
+    <div
+      ref={rootRef}
+      className="relative z-[200] inline-flex shrink-0 items-center justify-center self-center"
+    >
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-3 bg-white rounded-xl border-2 border-slate-200 hover:border-primary-400 shadow-sm hover:shadow-md transition-all"
+        className="touch-manipulation relative flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border-2 border-slate-200 bg-white p-2 shadow-sm transition-all hover:border-primary-400 hover:shadow-md"
         aria-label="Notifications"
+        aria-expanded={isOpen}
+        aria-haspopup="dialog"
       >
-        <Bell className="w-6 h-6 text-slate-700" />
+        <Bell className="h-6 w-6 text-slate-700" />
         {unreadCount > 0 && (
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold border-2 border-white"
-          >
+          <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-red-600 text-xs font-bold text-white">
             {unreadCount > 9 ? '9+' : unreadCount}
-          </motion.div>
+          </span>
         )}
       </button>
-
-      {/* Notification Panel */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className="absolute top-16 right-0 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-2xl border-2 border-slate-200 z-50 max-h-[600px] flex flex-col"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b-2 border-slate-200">
-              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                <Bell className="w-5 h-5 text-primary-700" />
-                Disease Alerts
-                {unreadCount > 0 && (
-                  <span className="px-2 py-1 bg-red-500 text-white text-xs rounded-full">
-                    {unreadCount} new
-                  </span>
-                )}
-              </h3>
-              <div className="flex items-center gap-2">
-                {unreadCount > 0 && (
-                  <button
-                    onClick={markAllAsRead}
-                    className="text-xs text-primary-700 hover:text-primary-800 font-semibold px-2 py-1 hover:bg-primary-50 rounded-lg transition-colors"
+      {isOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="disease-alerts-title"
+          className="absolute right-0 top-[calc(100%+10px)] flex max-h-[min(420px,70dvh)] w-[min(22rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-xl ring-1 ring-slate-900/10"
+        >
+              <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 bg-white p-4">
+                <div className="min-w-0 flex-1">
+                  <h3
+                    id="disease-alerts-title"
+                    className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-lg font-bold leading-tight text-slate-900 sm:text-xl"
                   >
-                    Mark all read
-                  </button>
-                )}
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-100 rounded-lg"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Notifications List */}
-            <div className="overflow-y-auto flex-1 p-2">
-              {notifications.length === 0 ? (
-                <div className="text-center py-12 text-slate-500">
-                  <Bell className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p className="font-semibold">No alerts yet</p>
-                  <p className="text-sm mt-1">
-                    You&apos;ll be notified when outbreaks occur within 250 miles
-                  </p>
+                    <span className="inline-flex shrink-0 items-center gap-2">
+                      <Bell className="h-5 w-5 shrink-0 text-primary-700" />
+                      <span>Disease Alerts</span>
+                    </span>
+                    {unreadCount > 0 && (
+                      <span className="inline-flex shrink-0 items-center rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm">
+                        {unreadCount} new
+                      </span>
+                    )}
+                  </h3>
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  {notifications.map((notification) => {
-                    const outbreak = outbreaks.find((o) => o.id === notification.outbreakId) as OutbreakReport | undefined
-                    return (
-                      <motion.div
-                        key={notification.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className={`p-4 rounded-xl border-2 transition-all ${
-                          notification.read
-                            ? 'bg-slate-50 border-slate-200'
-                            : 'bg-red-50 border-red-200 shadow-md'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <AlertTriangle
-                                className={`w-5 h-5 ${
-                                  notification.severity === 'high'
-                                    ? 'text-red-600'
-                                    : notification.severity === 'medium'
-                                    ? 'text-orange-600'
-                                    : 'text-yellow-600'
-                                }`}
-                              />
-                              <p className="font-bold text-slate-900 text-sm">
-                                {notification.message}
-                              </p>
-                            </div>
-                            {outbreak && (
-                              <div className="mt-2 space-y-1">
-                                {outbreak.reporterVerified !== undefined && (
-                                  <p className="text-xs">
-                                    <span
-                                      className={`inline-block font-bold px-2 py-0.5 rounded-md border ${
-                                        outbreak.reporterVerified
-                                          ? 'bg-emerald-100 text-emerald-900 border-emerald-200'
-                                          : 'bg-slate-100 text-slate-700 border-slate-200'
-                                      }`}
-                                    >
-                                      {outbreak.reporterVerified ? 'Verified farmer' : 'Unverified farmer'}
-                                    </span>
-                                  </p>
-                                )}
-                                <p className="text-xs text-slate-600 flex items-center gap-1">
-                                  <MapPin className="w-3 h-3" />
-                                  {notification.distance.toFixed(1)} miles away
-                                </p>
-                                <p className="text-xs text-slate-500">
-                                  {new Date(notification.createdAt).toLocaleString()}
+                <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+                  {unreadCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={markAllAsRead}
+                      className="whitespace-nowrap rounded-lg px-2 py-1.5 text-xs font-semibold text-primary-700 transition-colors hover:bg-primary-50"
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsOpen(false)}
+                    className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+                    aria-label="Close notifications"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-white p-2">
+                {notifications.length === 0 ? (
+                  <div className="py-10 text-center text-slate-600">
+                    <Bell className="mx-auto mb-3 h-12 w-12 text-slate-400" />
+                    <p className="font-semibold text-slate-800">No alerts yet</p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      You&apos;ll be notified when outbreaks occur within 250 miles
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {notifications.map((notification) => {
+                      const outbreak = outbreaks.find((o) => o.id === notification.outbreakId) as
+                        | OutbreakReport
+                        | undefined
+                      return (
+                        <div
+                          key={notification.id}
+                          className={`rounded-xl border p-4 transition-all ${
+                            notification.read
+                              ? 'border-slate-200 bg-slate-50'
+                              : 'border-red-200 bg-red-50/95 shadow-sm'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="mb-2 flex gap-2">
+                                <AlertTriangle
+                                  className={`mt-0.5 h-5 w-5 shrink-0 ${
+                                    notification.severity === 'high'
+                                      ? 'text-red-600'
+                                      : notification.severity === 'medium'
+                                        ? 'text-orange-600'
+                                        : 'text-yellow-600'
+                                  }`}
+                                />
+                                <p className="text-sm font-bold leading-snug text-slate-900">
+                                  {notification.message}
                                 </p>
                               </div>
-                            )}
-                          </div>
-                          <div className="flex items-start gap-1">
-                            {!notification.read && (
+                              {outbreak && (
+                                <div className="mt-2 space-y-1 pl-0 sm:pl-7">
+                                  {outbreak.reporterVerified !== undefined && (
+                                    <p className="text-xs">
+                                      <span
+                                        className={`inline-block rounded-md border px-2 py-0.5 font-bold ${
+                                          outbreak.reporterVerified
+                                            ? 'border-emerald-200 bg-emerald-100 text-emerald-900'
+                                            : 'border-slate-200 bg-slate-100 text-slate-700'
+                                        }`}
+                                      >
+                                        {outbreak.reporterVerified ? 'Verified farmer' : 'Unverified farmer'}
+                                      </span>
+                                    </p>
+                                  )}
+                                  <p className="flex items-center gap-1 text-xs text-slate-600">
+                                    <MapPin className="h-3 w-3 shrink-0" />
+                                    {notification.distance.toFixed(1)} miles away
+                                  </p>
+                                  <p className="text-xs text-slate-500">
+                                    {new Date(notification.createdAt).toLocaleString()}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex shrink-0 items-start gap-1">
+                              {!notification.read && (
+                                <button
+                                  type="button"
+                                  onClick={() => markAsRead(notification.id)}
+                                  className="rounded-lg p-1.5 text-green-700 transition-colors hover:bg-white"
+                                  title="Mark as read"
+                                >
+                                  <Check className="h-4 w-4" />
+                                </button>
+                              )}
                               <button
-                                onClick={() => markAsRead(notification.id)}
-                                className="p-1 hover:bg-white rounded-lg transition-colors"
-                                title="Mark as read"
+                                type="button"
+                                onClick={() => deleteNotification(notification.id)}
+                                className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-white hover:text-slate-800"
+                                title="Delete"
                               >
-                                <Check className="w-4 h-4 text-green-600" />
+                                <X className="h-4 w-4" />
                               </button>
-                            )}
-                            <button
-                              onClick={() => deleteNotification(notification.id)}
-                              className="p-1 hover:bg-white rounded-lg transition-colors"
-                              title="Delete"
-                            >
-                              <X className="w-4 h-4 text-slate-400" />
-                            </button>
+                            </div>
                           </div>
                         </div>
-                      </motion.div>
-                    )
-                  })}
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {notifications.length > 0 && (
+                <div className="shrink-0 border-t border-slate-200 bg-slate-100/90 p-3">
+                  <p className="text-center text-xs text-slate-600">
+                    Alerts within 250 miles of your farm (or demo location). Dismissed alerts stay hidden until refresh.
+                  </p>
                 </div>
               )}
-            </div>
-
-            {/* Footer */}
-            {notifications.length > 0 && (
-              <div className="p-3 border-t-2 border-slate-200 bg-slate-50 rounded-b-2xl">
-                <p className="text-xs text-slate-600 text-center">
-                  Alerts for outbreaks within 250 miles of registered farms
-                </p>
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+        </div>
+      )}
+    </div>
   )
 }
